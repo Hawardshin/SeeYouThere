@@ -6,6 +6,7 @@ import { Participant, CandidateLocation } from '@/types';
 import ParticipantManager from '@/components/ParticipantManager';
 import LocationManager from '@/components/LocationManager';
 import ResultsDisplay from '@/components/ResultsDisplay';
+import ParticipantAnalysis from '@/components/ParticipantAnalysis';
 import ShareDialog from '@/components/ShareDialog';
 import RoomEntranceDialog from '@/components/RoomEntranceDialog';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -28,6 +29,9 @@ export default function Home() {
   
   // 🎯 스텝 관리 (1: 참여자, 2: 장소, 3: 결과)
   const [currentStep, setCurrentStep] = useState(1);
+  
+  // 결과 페이지 뷰 모드 (overview: 전체 분석, individual: 개인별 분석)
+  const [resultView, setResultView] = useState<'overview' | 'individual'>('overview');
 
   // 방 데이터 로드
   const loadRoomData = async (roomCode: string) => {
@@ -227,7 +231,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          {currentStep === 3 && (
+                      {currentStep === 3 && (
             <motion.div
               key="step3"
               initial={{ opacity: 0, x: 50 }}
@@ -235,26 +239,83 @@ export default function Home() {
               exit={{ opacity: 0, x: -50 }}
               transition={{ duration: 0.3 }}
             >
-              <ResultsDisplay
-                candidates={candidates}
-                selectedLocationId={selectedLocationId}
-              />
-              
-              {/* 공유 버튼 */}
-              {candidates.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-6 flex justify-center"
-                >
-                  <ShareDialog
-                    meetingTitle={meetingTitle}
-                    participants={participants}
-                    candidates={candidates}
-                  />
-                </motion.div>
-              )}
+              <div className="space-y-6">
+                {/* 뷰 전환 토글 버튼 */}
+                {candidates.length > 0 && participants.length > 0 && (
+                  <div className="flex justify-center">
+                    <div className="inline-flex rounded-lg border bg-muted p-1">
+                      <button
+                        onClick={() => setResultView('overview')}
+                        className={`px-6 py-2 text-sm font-semibold rounded-md transition-all ${
+                          resultView === 'overview'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        📊 전체 분석
+                      </button>
+                      <button
+                        onClick={() => setResultView('individual')}
+                        className={`px-6 py-2 text-sm font-semibold rounded-md transition-all ${
+                          resultView === 'individual'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        👤 개인별 분석
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* 전체 분석 뷰 */}
+                {resultView === 'overview' && (
+                  <motion.div
+                    key="overview"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ResultsDisplay
+                      candidates={candidates}
+                      selectedLocationId={selectedLocationId}
+                    />
+                  </motion.div>
+                )}
+                
+                {/* 개인별 분석 뷰 */}
+                {resultView === 'individual' && candidates.length > 0 && participants.length > 0 && (
+                  <motion.div
+                    key="individual"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ParticipantAnalysis
+                      participants={participants}
+                      candidates={candidates}
+                    />
+                  </motion.div>
+                )}
+                
+                {/* 공유 버튼 */}
+                {candidates.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="flex justify-center"
+                  >
+                    <ShareDialog
+                      meetingTitle={meetingTitle}
+                      participants={participants}
+                      candidates={candidates}
+                    />
+                  </motion.div>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
