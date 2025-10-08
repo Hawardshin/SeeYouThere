@@ -3,10 +3,11 @@ export interface Participant {
   id: string;
   name: string;
   startLocation: string; // 출발지 주소
-  coordinates?: {
+  coordinates: {
     lat: number;
     lng: number;
   };
+  transportMode: 'car' | 'transit'; // 교통수단 (기본: transit)
 }
 
 // 후보 장소 정보
@@ -14,7 +15,7 @@ export interface CandidateLocation {
   id: string;
   name: string;
   address: string;
-  coordinates?: {
+  coordinates: {
     lat: number;
     lng: number;
   };

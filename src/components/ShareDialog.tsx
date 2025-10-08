@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Share2, Copy, Check } from 'lucide-react';
+import { Share2, Copy, Check, Loader2 } from 'lucide-react';
 
 interface ShareDialogProps {
   meetingTitle: string;
@@ -23,10 +23,48 @@ export default function ShareDialog({ meetingTitle, participants, candidates }: 
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [hasShareApi, setHasShareApi] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setHasShareApi(typeof navigator !== 'undefined' && 'share' in navigator);
   }, []);
+
+  // 모임 저장 및 공유 URL 생성
+  const handleSaveMeeting = async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/meetings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: meetingTitle,
+          participants,
+          candidates,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setShareUrl(data.shareUrl);
+        return data.shareUrl;
+      } else {
+        alert('모임 저장에 실패했습니다.');
+        return null;
+      }
+    } catch (error) {
+      console.error('모임 저장 오류:', error);
+      alert('모임 저장 중 오류가 발생했습니다.');
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const generateShareText = () => {
     let text = `🎉 ${meetingTitle}\n\n`;
@@ -54,9 +92,16 @@ export default function ShareDialog({ meetingTitle, participants, candidates }: 
   };
 
   const handleCopy = async () => {
-    const text = generateShareText();
+    let urlToCopy = shareUrl;
+    
+    // 아직 저장되지 않았으면 먼저 저장
+    if (!urlToCopy) {
+      urlToCopy = await handleSaveMeeting();
+      if (!urlToCopy) return;
+    }
+
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(urlToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -66,13 +111,20 @@ export default function ShareDialog({ meetingTitle, participants, candidates }: 
   };
 
   const handleShare = async () => {
-    const text = generateShareText();
+    let urlToShare = shareUrl;
+    
+    // 아직 저장되지 않았으면 먼저 저장
+    if (!urlToShare) {
+      urlToShare = await handleSaveMeeting();
+      if (!urlToShare) return;
+    }
     
     if (navigator.share) {
       try {
         await navigator.share({
           title: meetingTitle,
-          text: text,
+          text: `${meetingTitle} - 약속 장소 정보`,
+          url: urlToShare,
         });
       } catch (err) {
         console.error('공유 실패:', err);
@@ -100,49 +152,105 @@ export default function ShareDialog({ meetingTitle, participants, candidates }: 
         </DialogHeader>
         
         <div className="space-y-4">
+          {/* 공유 URL 표시 */}
+          {shareUrl ? (
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+              <p className="text-sm font-semibold mb-2">공유 링크</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border rounded text-sm"
+                />
+                <Button
+                  onClick={handleCopy}
+                  variant="outline"
+                  size="sm"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                💡 공유 링크를 생성하려면 아래 버튼을 클릭하세요.
+              </p>
+            </div>
+          )}
+
           {/* 미리보기 */}
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-            <pre className="text-sm whitespace-pre-wrap font-mono">
+            <p className="text-sm font-semibold mb-2">미리보기</p>
+            <pre className="text-xs whitespace-pre-wrap font-mono max-h-60 overflow-y-auto">
               {generateShareText()}
             </pre>
           </div>
 
           {/* 액션 버튼 */}
           <div className="flex gap-2">
-            <Button
-              onClick={handleCopy}
-              variant="outline"
-              className="flex-1"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4 mr-2" />
-                  복사됨!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-2" />
-                  텍스트 복사
-                </>
-              )}
-            </Button>
-            
-            {hasShareApi && (
+            {!shareUrl && (
               <Button
-                onClick={handleShare}
+                onClick={handleSaveMeeting}
                 className="flex-1"
+                disabled={isSaving}
               >
-                <Share2 className="h-4 w-4 mr-2" />
-                공유하기
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    저장 중...
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-4 w-4 mr-2" />
+                    공유 링크 생성
+                  </>
+                )}
               </Button>
+            )}
+            
+            {shareUrl && (
+              <>
+                <Button
+                  onClick={handleCopy}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      복사됨!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      링크 복사
+                    </>
+                  )}
+                </Button>
+                
+                {hasShareApi && (
+                  <Button
+                    onClick={handleShare}
+                    className="flex-1"
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    공유하기
+                  </Button>
+                )}
+              </>
             )}
           </div>
 
-          {/* 링크 공유 안내 */}
+          {/* 안내 */}
           <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              💡 <strong>팁:</strong> 이 정보를 카카오톡, 이메일 등으로 전달하여 
-              참여자들과 공유할 수 있습니다.
+              💡 <strong>팁:</strong> 공유 링크를 통해 다른 사람들이 결과를 확인할 수 있습니다.
             </p>
           </div>
         </div>
