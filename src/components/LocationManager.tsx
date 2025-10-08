@@ -15,6 +15,8 @@ interface LocationManagerProps {
   onCandidatesChange: (candidates: CandidateLocation[]) => void;
   selectedLocationId: string | null;
   onLocationSelect: (id: string | null) => void;
+  departureTime: string;
+  onDepartureTimeChange: (time: string) => void;
 }
 
 export default function LocationManager({
@@ -23,6 +25,8 @@ export default function LocationManager({
   onCandidatesChange,
   selectedLocationId,
   onLocationSelect,
+  departureTime,
+  onDepartureTimeChange,
 }: LocationManagerProps) {
   const [locationAddress, setLocationAddress] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
@@ -131,21 +135,38 @@ export default function LocationManager({
   };
 
   return (
-    <Card className="h-full border-2 shadow-lg hover:shadow-xl transition-all duration-300">
-      <CardHeader className="bg-secondary/5 border-b-2 border-border/50">
-        <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-wide uppercase">
-          <MapPin className="h-6 w-6 text-secondary" />
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-xl font-bold">
+          <MapPin className="h-5 w-5 text-primary" />
           회합 후보지
         </CardTitle>
         <CardDescription className="text-base">
-          전략적 약속 장소 후보를 검색하세요
+          약속 장소 후보를 검색하세요
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* 출발 시간 설정 */}
+        <div className="p-4 bg-muted/50 rounded-lg border">
+          <label className="text-sm font-semibold mb-2 flex items-center gap-2 text-foreground">
+            <Clock className="h-4 w-4 text-primary" />
+            출발 시간
+          </label>
+          <input
+            type="time"
+            value={departureTime}
+            onChange={(e) => onDepartureTimeChange(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            선택한 시간 기준으로 소요시간을 계산합니다
+          </p>
+        </div>
+
         {/* 입력 폼 */}
-        <div className="space-y-3 p-4 bg-accent/30 rounded-lg border-2 border-dashed border-secondary/30">
+        <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
           <div>
-            <label className="text-sm font-semibold mb-1.5 block uppercase tracking-wide text-foreground">목표 지점</label>
+            <label className="text-sm font-semibold mb-1.5 block text-foreground">📍 목표 지점</label>
             <AddressSearch
               onSelect={(address: string, coords: { lat: number; lng: number }) => {
                 setLocationAddress(address);
@@ -157,7 +178,7 @@ export default function LocationManager({
 
           <Button 
             onClick={handleAddCandidate} 
-            className="w-full font-semibold tracking-wide uppercase shadow-md hover:shadow-lg transition-all duration-200"
+            className="w-full font-semibold"
             disabled={participants.length === 0 || isCalculating}
           >
             {isCalculating ? (
@@ -176,38 +197,38 @@ export default function LocationManager({
           {participants.length === 0 && (
             <p className="text-xs text-destructive font-medium flex items-center gap-1.5 bg-destructive/10 p-2 rounded border border-destructive/30">
               <span>⚠️</span>
-              <span>먼저 병력을 배치해주세요</span>
+              <span>먼저 참여자를 추가해주세요</span>
             </p>
           )}
         </div>
 
         {/* 후보지 목록 */}
         <div>
-          <h3 className="text-sm font-bold mb-2 text-foreground uppercase tracking-wide">
+          <h3 className="text-sm font-semibold mb-2 text-foreground flex items-center gap-2">
             🎯 후보 지점 목록 ({candidates.length}개)
           </h3>
           <div className="space-y-2">
             {candidates.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8 border-2 border-dashed rounded-lg bg-accent/20">
+              <p className="text-sm text-muted-foreground text-center py-8 border-2 border-dashed rounded-lg bg-muted/30">
                 후보 장소를 추가해주세요
               </p>
             ) : (
               candidates.map((candidate) => (
                 <div
                   key={candidate.id}
-                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                     selectedLocationId === candidate.id
-                      ? 'border-secondary bg-secondary/10 shadow-lg scale-[1.02]'
-                      : 'border-border hover:border-secondary/50 hover:shadow-md hover:scale-[1.01]'
+                      ? 'border-primary bg-primary/5 shadow-md'
+                      : 'border-border bg-card hover:border-primary/50 hover:shadow-sm'
                   }`}
                   onClick={() => onLocationSelect(candidate.id)}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 dark:text-white truncate">
+                      <h4 className="font-semibold text-foreground truncate">
                         {candidate.name}
                       </h4>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {candidate.address}
                       </p>
                     </div>
@@ -218,7 +239,7 @@ export default function LocationManager({
                         e.stopPropagation();
                         handleRemoveCandidate(candidate.id);
                       }}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-2"
+                      className="text-destructive hover:text-destructive/80 hover:bg-destructive/10 ml-2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -226,34 +247,34 @@ export default function LocationManager({
 
                   {/* 소요시간 요약 */}
                   <div className="flex gap-3 mb-2">
-                    <div className="flex items-center gap-1 text-xs">
-                      <Clock className="h-3 w-3 text-gray-400" />
-                      <span className="text-gray-600 dark:text-gray-400">총합:</span>
+                    <div className="flex items-center gap-1 text-xs font-medium text-foreground">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">총합:</span>
                       <span className="font-semibold">{getTotalTime(candidate.travelTimes)}분</span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs">
-                      <Clock className="h-3 w-3 text-gray-400" />
-                      <span className="text-gray-600 dark:text-gray-400">최대:</span>
+                    <div className="flex items-center gap-1 text-xs font-medium text-foreground">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">최대:</span>
                       <span className="font-semibold">{getMaxTime(candidate.travelTimes)}분</span>
                     </div>
                   </div>
 
                   {/* 선택된 경우 상세 정보 표시 */}
                   {selectedLocationId === candidate.id && (
-                    <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800 space-y-1.5">
+                    <div className="mt-3 pt-3 border-t space-y-1.5">
                       {candidate.travelTimes.map((tt) => {
                         const participant = participants.find(p => p.id === tt.participantId);
                         return (
                           <div
                             key={tt.participantId}
-                            className="flex justify-between items-center text-sm bg-white dark:bg-gray-800 px-2 py-1.5 rounded"
+                            className="flex justify-between items-center text-sm bg-muted/50 px-3 py-2 rounded"
                           >
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-700 dark:text-gray-300 font-medium">
+                              <span className="text-foreground font-medium">
                                 {tt.participantName}
                               </span>
                               {participant?.transportMode === 'transit' && (
-                                <Badge variant="outline" className="text-xs py-0">
+                                <Badge variant="outline" className="text-xs py-0 border-primary/50 text-primary">
                                   대중교통
                                 </Badge>
                               )}

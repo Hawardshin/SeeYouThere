@@ -1,27 +1,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Participant, CandidateLocation } from '@/types';
 import ParticipantManager from '@/components/ParticipantManager';
 import LocationManager from '@/components/LocationManager';
 import ResultsDisplay from '@/components/ResultsDisplay';
 import ShareDialog from '@/components/ShareDialog';
 import RoomEntranceDialog from '@/components/RoomEntranceDialog';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import ThemeToggle from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { LogOut, Users, Copy, Check } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles } from 'lucide-react';
 
 export default function Home() {
-  const [meetingTitle, setMeetingTitle] = useState('새로운 작전');
+  const [meetingTitle, setMeetingTitle] = useState('새로운 모임');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [candidates, setCandidates] = useState<CandidateLocation[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   
+  // 출발 시간 설정 (기본값: 오후 1시)
+  const [departureTime, setDepartureTime] = useState('13:00');
+  
   // 방 관련 상태
   const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null);
+  // 방 입장 전까지 다이얼로그 강제 표시
   const [showRoomDialog, setShowRoomDialog] = useState(true);
-  const [copied, setCopied] = useState(false);
+  
+  // 🎯 스텝 관리 (1: 참여자, 2: 장소, 3: 결과)
+  const [currentStep, setCurrentStep] = useState(1);
 
   // 방 데이터 로드
   const loadRoomData = async (roomCode: string) => {
@@ -30,7 +36,7 @@ export default function Home() {
       const data = await response.json();
 
       if (data.success) {
-        setMeetingTitle(data.data.meetingTitle || '새로운 작전');
+        setMeetingTitle(data.data.meetingTitle || '새로운 모임');
         setParticipants(data.data.participants || []);
         setCandidates(data.data.candidates || []);
       }
@@ -42,34 +48,16 @@ export default function Home() {
   // 방 입장 처리
   const handleRoomEnter = async (roomCode: string, isNew: boolean) => {
     setCurrentRoomCode(roomCode);
+    setShowRoomDialog(false); // 방 입장 성공 시에만 닫기
     if (!isNew) {
       await loadRoomData(roomCode);
     }
   };
 
-  // 방 나가기
-  const handleLeaveRoom = () => {
-    setCurrentRoomCode(null);
-    setMeetingTitle('새로운 작전');
-    setParticipants([]);
-    setCandidates([]);
-    setShowRoomDialog(true);
-  };
-
-  // 코드 복사
-  const handleCopyCode = async () => {
-    if (currentRoomCode) {
-      await navigator.clipboard.writeText(currentRoomCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  // 자동 저장 (참여자, 후보지, 제목 변경 시)
+  // 자동 저장
   useEffect(() => {
     if (currentRoomCode) {
       const timer = setTimeout(() => {
-        // 방 데이터 저장
         fetch('/api/rooms', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -79,141 +67,231 @@ export default function Home() {
             participants,
             candidates,
           }),
-        }).catch(error => console.error('방 데이터 저장 실패:', error));
-      }, 1000); // 1초 디바운스
+        }).catch(error => console.error('저장 실패:', error));
+      }, 1000);
 
       return () => clearTimeout(timer);
     }
   }, [participants, candidates, meetingTitle, currentRoomCode]);
 
+  // 다음 단계로
+  const handleNext = () => {
+    if (currentStep === 1 && participants.length === 0) {
+      alert('최소 1명의 참여자를 추가해주세요!');
+      return;
+    }
+    if (currentStep === 2 && candidates.length === 0) {
+      alert('최소 1개의 후보 장소를 추가해주세요!');
+      return;
+    }
+    setCurrentStep(prev => Math.min(prev + 1, 3));
+  };
+
+  // 스텝 정보
+  const steps = [
+    { number: 1, title: '참여자', icon: Users, desc: '누가 참여하나요?' },
+    { number: 2, title: '장소', icon: MapPin, desc: '어디서 만날까요?' },
+    { number: 3, title: '결과', icon: Sparkles, desc: '최적의 장소는?' },
+  ];
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="min-h-screen pb-20">
       {/* 방 입장 다이얼로그 */}
       <RoomEntranceDialog
         open={showRoomDialog && !currentRoomCode}
-        onOpenChange={setShowRoomDialog}
+        onOpenChange={(open) => {
+          // 방 코드가 있을 때만 다이얼로그를 닫을 수 있음
+          if (!open && !currentRoomCode) {
+            return; // 방 입장 전에는 닫기 방지
+          }
+          setShowRoomDialog(open);
+        }}
         onRoomEnter={handleRoomEnter}
       />
 
-      <div className="max-w-7xl mx-auto">
-        {/* 헤더 - 진격의 거인 스타일 */}
-        <div className="mb-8 text-center relative">
-          <div className="absolute inset-0 bg-primary/5 rounded-2xl -z-10 transform -rotate-1"></div>
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-3 tracking-wider uppercase drop-shadow-lg">
-            ⚔️ SeeYouThere
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground font-medium">
-            모두에게 공평한 약속 장소를 찾아드립니다
-          </p>
-          <div className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <span className="inline-block w-12 h-0.5 bg-primary"></span>
-            <span>전략적 회합 지점 분석 시스템</span>
-            <span className="inline-block w-12 h-0.5 bg-primary"></span>
+      <div className="max-w-4xl mx-auto px-4 py-6 md:py-8">
+        {/* 헤더 */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8 md:mb-12 relative"
+        >
+          {/* 테마 토글 버튼 - 우측 상단 */}
+          <div className="absolute top-0 right-0">
+            <ThemeToggle />
           </div>
-        </div>
+          
+          <h1 className="text-4xl md:text-6xl font-black mb-3 md:mb-4">
+            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              SeeYouThere
+            </span>
+          </h1>
+          <p className="text-base md:text-xl text-muted-foreground mb-2">
+            모두에게 공평한 만남의 장소 찾기
+          </p>
+          {currentRoomCode && (
+            <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-accent rounded-full border">
+              <span className="text-sm text-muted-foreground">방 코드:</span>
+              <span className="font-bold text-primary">{currentRoomCode}</span>
+            </div>
+          )}
+        </motion.div>
 
-        {/* 방 정보 표시 */}
-        {currentRoomCode && (
-          <Card className="mb-6 border-2 shadow-lg bg-primary/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold text-lg tracking-widest">
-                      {currentRoomCode}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopyCode}
-                      className="gap-2"
+        {/* 프로그레스 스텝 - 모바일 최적화 */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8 md:mb-12"
+        >
+          <div className="flex items-center justify-between max-w-2xl mx-auto">
+            {steps.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = currentStep === step.number;
+              const isCompleted = currentStep > step.number;
+              
+              return (
+                <div key={step.number} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentStep(step.number)}
+                      className={`
+                        w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center cursor-pointer
+                        transition-all duration-300 mb-2 border-2
+                        ${isActive ? 'bg-gradient-to-r from-primary to-secondary shadow-lg scale-110 border-primary' : ''}
+                        ${isCompleted ? 'bg-primary/20 border-primary' : ''}
+                        ${!isActive && !isCompleted ? 'bg-muted/30 border-border' : ''}
+                      `}
                     >
-                      {copied ? (
-                        <>
-                          <Check className="h-4 w-4" />
-                          복사됨
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4" />
-                          복사
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      병력 {participants.length}명
+                      <Icon className={`w-5 h-5 md:w-7 md:h-7 ${isActive ? 'text-primary-foreground' : isCompleted ? 'text-primary' : 'text-muted-foreground'}`} />
+                    </motion.div>
+                    <span className={`text-xs md:text-sm font-bold hidden md:block ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {step.title}
+                    </span>
+                    <span className={`text-xs text-muted-foreground hidden lg:block transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}>
+                      {step.desc}
                     </span>
                   </div>
+                  {index < steps.length - 1 && (
+                    <div className={`h-0.5 flex-1 transition-all duration-300 ${
+                      currentStep > step.number ? 'bg-primary' : 'bg-border'
+                    }`} />
+                  )}
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={handleLeaveRoom}
-                  className="gap-2 uppercase"
-                >
-                  <LogOut className="h-4 w-4" />
-                  작전실 나가기
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 모임 제목 */}
-        <Card className="mb-6 border-2 shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="bg-primary/5">
-            <CardTitle className="text-xl font-bold tracking-wide uppercase">📋 작전명</CardTitle>
-            <CardDescription className="text-base">이번 회합의 코드명을 입력하세요</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <input
-              type="text"
-              value={meetingTitle}
-              onChange={(e) => setMeetingTitle(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background text-foreground font-medium transition-all duration-200"
-              placeholder="예: 조사병단 회식"
-              disabled={!currentRoomCode}
-            />
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* 참여자 관리 */}
-          <ParticipantManager
-            participants={participants}
-            onParticipantsChange={setParticipants}
-          />
-
-          {/* 후보지 관리 */}
-          <LocationManager
-            participants={participants}
-            candidates={candidates}
-            onCandidatesChange={setCandidates}
-            selectedLocationId={selectedLocationId}
-            onLocationSelect={setSelectedLocationId}
-          />
-        </div>
-
-        <Separator className="my-8" />
-
-        {/* 결과 표시 및 추천 */}
-        <ResultsDisplay
-          candidates={candidates}
-          selectedLocationId={selectedLocationId}
-        />
-
-        {/* 공유 버튼 */}
-        {candidates.length > 0 && (
-          <div className="mt-6 flex justify-center">
-            <ShareDialog
-              meetingTitle={meetingTitle}
-              participants={participants}
-              candidates={candidates}
-            />
+              );
+            })}
           </div>
-        )}
+        </motion.div>
+
+        {/* 스텝별 컨텐츠 - AnimatePresence로 부드러운 전환 */}
+        <AnimatePresence mode="wait">
+          {currentStep === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+            >
+              <ParticipantManager
+                participants={participants}
+                onParticipantsChange={setParticipants}
+              />
+            </motion.div>
+          )}
+
+          {currentStep === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+            >
+              <LocationManager
+                participants={participants}
+                candidates={candidates}
+                onCandidatesChange={setCandidates}
+                selectedLocationId={selectedLocationId}
+                onLocationSelect={setSelectedLocationId}
+                departureTime={departureTime}
+                onDepartureTimeChange={setDepartureTime}
+              />
+            </motion.div>
+          )}
+
+          {currentStep === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+            >
+              <ResultsDisplay
+                candidates={candidates}
+                selectedLocationId={selectedLocationId}
+              />
+              
+              {/* 공유 버튼 */}
+              {candidates.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-6 flex justify-center"
+                >
+                  <ShareDialog
+                    meetingTitle={meetingTitle}
+                    participants={participants}
+                    candidates={candidates}
+                  />
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 하단 네비게이션 - 모바일 고정 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent backdrop-blur-lg border-t border-white/10 md:relative md:mt-8 md:bg-transparent md:backdrop-blur-none md:border-t-0"
+        >
+          <div className="max-w-4xl mx-auto flex gap-3">
+            {currentStep > 1 && (
+              <Button
+                onClick={() => setCurrentStep(prev => prev - 1)}
+                variant="outline"
+                className="flex-1 md:flex-none bg-white/5 border-white/20 hover:bg-white/10 py-6"
+              >
+                <ChevronLeft className="mr-2 h-5 w-5" />
+                이전
+              </Button>
+            )}
+            
+            {currentStep < 3 ? (
+              <Button
+                onClick={handleNext}
+                className="flex-1 btn-bling py-6 text-lg font-black"
+              >
+                다음
+                <ChevronRight className="ml-2 h-5 w-5" />
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setCurrentStep(1)}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 py-6 text-lg font-black"
+              >
+                <Sparkles className="mr-2 h-5 w-5" />
+                새로 시작하기
+              </Button>
+            )}
+          </div>
+        </motion.div>
       </div>
     </div>
   );

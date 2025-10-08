@@ -62,7 +62,7 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-gray-500 py-8">
+          <p className="text-center text-muted-foreground py-8">
             후보 장소를 추가해주세요
           </p>
         </CardContent>
@@ -76,27 +76,27 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* 가장 공평한 장소 */}
         {fairestLocation && (
-          <Card className="border-2 border-green-500 bg-green-50 dark:bg-green-950">
+          <Card className="border-2 border-green-500/50 bg-green-50/50 dark:bg-green-950/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
+              <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
                 <Trophy className="h-5 w-5" />
                 가장 공평한 장소
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-bold">
                   {fairestLocation.locationName}
                 </h3>
                 <div className="flex flex-wrap gap-2 text-sm">
-                  <Badge variant="outline" className="bg-white dark:bg-gray-800">
+                  <Badge variant="outline">
                     평균 {Math.round(fairestLocation.avgTime)}분
                   </Badge>
-                  <Badge variant="outline" className="bg-white dark:bg-gray-800">
+                  <Badge variant="outline">
                     공평도 {fairestLocation.fairnessScore.toFixed(1)}
                   </Badge>
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   모든 참여자의 소요시간이 비슷합니다
                 </p>
               </div>
@@ -106,27 +106,27 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
 
         {/* 가장 빠른 장소 */}
         {fastestLocation && (
-          <Card className="border-2 border-blue-500 bg-blue-50 dark:bg-blue-950">
+          <Card className="border-2 border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+              <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                 <TrendingUp className="h-5 w-5" />
                 가장 빠른 장소
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-bold">
                   {fastestLocation.locationName}
                 </h3>
                 <div className="flex flex-wrap gap-2 text-sm">
-                  <Badge variant="outline" className="bg-white dark:bg-gray-800">
+                  <Badge variant="outline">
                     총합 {fastestLocation.totalTime}분
                   </Badge>
-                  <Badge variant="outline" className="bg-white dark:bg-gray-800">
+                  <Badge variant="outline">
                     최대 {fastestLocation.maxTime}분
                   </Badge>
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   모든 참여자의 총 이동시간이 가장 적습니다
                 </p>
               </div>
@@ -158,24 +158,24 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
                   key={stat.locationId}
                   className={`p-4 rounded-lg border-2 transition-all ${
                     isSelected
-                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-950'
-                      : 'border-gray-200 dark:border-gray-700'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-card hover:border-primary/50'
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                      <h4 className="font-semibold text-foreground">
                         {stat.locationName}
                       </h4>
                       <div className="flex gap-2 mt-1">
                         {isFairest && (
-                          <Badge className="bg-green-500 text-white text-xs">
+                          <Badge className="bg-green-600 text-white text-xs">
                             <Trophy className="h-3 w-3 mr-1" />
                             공평
                           </Badge>
                         )}
                         {isFastest && (
-                          <Badge className="bg-blue-500 text-white text-xs">
+                          <Badge className="bg-blue-600 text-white text-xs">
                             <TrendingUp className="h-3 w-3 mr-1" />
                             빠름
                           </Badge>
@@ -185,21 +185,21 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded">
-                      <p className="text-xs text-gray-500">총 시간</p>
-                      <p className="font-semibold">{stat.totalTime}분</p>
+                    <div className="bg-muted/50 p-2 rounded">
+                      <p className="text-xs text-muted-foreground">총 시간</p>
+                      <p className="font-semibold text-foreground">{stat.totalTime}분</p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded">
-                      <p className="text-xs text-gray-500">평균</p>
-                      <p className="font-semibold">{Math.round(stat.avgTime)}분</p>
+                    <div className="bg-muted/50 p-2 rounded">
+                      <p className="text-xs text-muted-foreground">평균</p>
+                      <p className="font-semibold text-foreground">{Math.round(stat.avgTime)}분</p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded">
-                      <p className="text-xs text-gray-500">최대</p>
-                      <p className="font-semibold">{stat.maxTime}분</p>
+                    <div className="bg-muted/50 p-2 rounded">
+                      <p className="text-xs text-muted-foreground">최대</p>
+                      <p className="font-semibold text-foreground">{stat.maxTime}분</p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded">
-                      <p className="text-xs text-gray-500">공평도</p>
-                      <p className="font-semibold">{stat.fairnessScore.toFixed(1)}</p>
+                    <div className="bg-muted/50 p-2 rounded">
+                      <p className="text-xs text-muted-foreground">공평도</p>
+                      <p className="font-semibold text-foreground">{stat.fairnessScore.toFixed(1)}</p>
                     </div>
                   </div>
                 </div>

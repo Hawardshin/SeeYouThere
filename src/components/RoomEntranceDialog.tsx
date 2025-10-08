@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles, LogIn } from 'lucide-react';
 
 interface RoomEntranceDialogProps {
   open: boolean;
@@ -22,7 +23,7 @@ export default function RoomEntranceDialog({
   const [error, setError] = useState('');
 
   const generateRoomCode = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 혼동되는 문자 제외
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
     for (let i = 0; i < 6; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -42,7 +43,7 @@ export default function RoomEntranceDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           roomCode: newCode,
-          meetingTitle: '새로운 작전',
+          meetingTitle: '새로운 모임',
           participants: [],
           candidates: []
         }),
@@ -55,15 +56,14 @@ export default function RoomEntranceDialog({
         setRoomCode('');
         onOpenChange(false);
       } else {
-        // 코드 충돌 시 재시도
         if (data.error === 'Room already exists') {
-          handleCreateRoom(); // 재귀적으로 다시 시도
+          handleCreateRoom();
         } else {
-          setError('작전실 생성에 실패했습니다');
+          setError('방 생성에 실패했습니다');
         }
       }
     } catch (err) {
-      setError('작전실 생성 중 오류가 발생했습니다');
+      setError('방 생성 중 오류가 발생했습니다');
       console.error(err);
     } finally {
       setLoading(false);
@@ -72,7 +72,7 @@ export default function RoomEntranceDialog({
 
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
-      setError('코드명을 입력해주세요');
+      setError('방 코드를 입력해주세요');
       return;
     }
 
@@ -88,10 +88,10 @@ export default function RoomEntranceDialog({
         setRoomCode('');
         onOpenChange(false);
       } else {
-        setError('존재하지 않는 작전실입니다');
+        setError('존재하지 않는 방입니다');
       }
     } catch (err) {
-      setError('작전실 입장 중 오류가 발생했습니다');
+      setError('방 입장 중 오류가 발생했습니다');
       console.error(err);
     } finally {
       setLoading(false);
@@ -106,50 +106,79 @@ export default function RoomEntranceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-card border-2">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold uppercase">작전실 입장</DialogTitle>
-          <DialogDescription>
-            새로운 작전실을 생성하거나 기존 작전실에 입장하세요
-          </DialogDescription>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <DialogTitle className="text-2xl md:text-3xl font-black text-center mb-2">
+              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                ✨ 환영합니다!
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              새로운 모임을 시작하거나<br className="md:hidden" /> 기존 방에 입장하세요
+            </DialogDescription>
+          </motion.div>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-6 py-4">
           {/* 새로 만들기 */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold uppercase">새 작전실 생성</h3>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-3"
+          >
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              새 방 만들기
+            </h3>
             <Button 
               onClick={handleCreateRoom} 
               disabled={loading}
-              className="w-full uppercase"
+              className="w-full py-6 text-lg font-bold"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   생성 중...
                 </>
               ) : (
-                '새 코드명 생성'
+                <>
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  새 방 만들기
+                </>
               )}
             </Button>
-          </div>
+          </motion.div>
 
           {/* 구분선 */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">또는</span>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-3 py-1 text-muted-foreground">또는</span>
             </div>
           </div>
 
           {/* 입장하기 */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold uppercase">기존 작전실 입장</h3>
-            <div className="flex gap-2">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-3"
+          >
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <LogIn className="h-4 w-4 text-primary" />
+              기존 방 입장
+            </h3>
+            <div className="space-y-3">
               <Input
-                placeholder="코드명 입력 (예: ABC123)"
+                placeholder="방 코드 입력 (예: ABC123)"
                 value={roomCode}
                 onChange={(e) => {
                   setRoomCode(e.target.value.toUpperCase());
@@ -157,28 +186,39 @@ export default function RoomEntranceDialog({
                 }}
                 onKeyPress={handleKeyPress}
                 maxLength={6}
-                className="uppercase"
+                className="text-center text-lg font-bold tracking-widest"
                 disabled={loading}
               />
               <Button 
                 onClick={handleJoinRoom} 
                 disabled={loading || !roomCode.trim()}
-                className="uppercase"
+                variant="secondary"
+                className="w-full py-6 text-lg font-bold"
               >
                 {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    입장 중...
+                  </>
                 ) : (
-                  '입장'
+                  <>
+                    <LogIn className="mr-2 h-5 w-5" />
+                    입장하기
+                  </>
                 )}
               </Button>
             </div>
-          </div>
+          </motion.div>
 
           {/* 에러 메시지 */}
           {error && (
-            <div className="text-sm text-red-500 mt-2">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-destructive text-center bg-destructive/10 border border-destructive/30 rounded-lg p-3 font-medium"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
         </div>
       </DialogContent>

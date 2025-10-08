@@ -44,74 +44,73 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  /* 진격의 거인 테마 - 군사/빈티지 색상 (라이트 모드) */
-  --background: oklch(0.96 0.015 85); /* 연한 베이지 */
-  --foreground: oklch(0.25 0.02 45); /* 다크 브라운 */
-  --card: oklch(0.98 0.01 85);
-  --card-foreground: oklch(0.25 0.02 45);
-  --popover: oklch(0.98 0.01 85);
-  --popover-foreground: oklch(0.25 0.02 45);
-  --primary: oklch(0.55 0.08 120); /* 올리브 그린 (군복색) */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.50 0.05 165); /* 그린 그레이 (스카우트 망토) */
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.90 0.01 85);
-  --muted-foreground: oklch(0.50 0.015 45);
-  --accent: oklch(0.85 0.02 85);
-  --accent-foreground: oklch(0.25 0.02 45);
-  --destructive: oklch(0.55 0.22 25);
-  --border: oklch(0.80 0.015 85);
-  --input: oklch(0.85 0.015 85);
-  --ring: oklch(0.55 0.08 120);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.55 0.08 120);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.85 0.02 85);
-  --sidebar-accent-foreground: oklch(0.25 0.02 45);
-  --sidebar-border: oklch(67.29% 0.13143 79.006);
-  --sidebar-ring: oklch(0.55 0.08 120);
+  --radius: 0.5rem;
+  /* � 라이트 모드 - 미니멀 */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #2563eb; /* 블루 */
+  --primary-foreground: #ffffff;
+  --secondary: #64748b; /* 그레이 */
+  --secondary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0a0a0a;
+  --destructive: #ef4444;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+  --chart-1: #2563eb;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #8b5cf6;
+  --chart-5: #ef4444;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #2563eb;
 }
 
 .dark {
-  /* 다크 모드 - 어두운 군사 테마 */
-  --background: oklch(0.18 0.02 45); /* 다크 브라운 */
-  --foreground: oklch(0.92 0.015 85);
-  --card: oklch(0.22 0.018 45);
-  --card-foreground: oklch(0.92 0.015 85);
-  --popover: oklch(0.22 0.018 45);
-  --popover-foreground: oklch(0.92 0.015 85);
-  --primary: oklch(0.60 0.10 120); /* 밝은 올리브 */
-  --primary-foreground: oklch(0.18 0.02 45);
-  --secondary: oklch(0.45 0.06 165); /* 진한 그린 그레이 */
-  --secondary-foreground: oklch(0.95 0.01 85);
-  --muted: oklch(0.28 0.015 45);
-  --muted-foreground: oklch(0.65 0.02 85);
-  --accent: oklch(0.32 0.025 85);
-  --accent-foreground: oklch(0.92 0.015 85);
-  --destructive: oklch(0.50 0.24 25);
-  --border: oklch(0.32 0.015 45);
-  --input: oklch(0.32 0.015 45);
-  --ring: oklch(0.60 0.10 120);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.22 0.018 45);
-  --sidebar-foreground: oklch(0.92 0.015 85);
-  --sidebar-primary: oklch(0.60 0.10 120);
-  --sidebar-primary-foreground: oklch(0.92 0.015 85);
-  --sidebar-accent: oklch(0.32 0.025 85);
-  --sidebar-accent-foreground: oklch(0.92 0.015 85);
-  --sidebar-border: oklch(0.32 0.015 45);
-  --sidebar-ring: oklch(0.60 0.10 120);
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #64748b;
+  --secondary-foreground: #ffffff;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --border: #262626;
+  --input: #262626;
+  --ring: #3b82f6;
+  --chart-1: #3b82f6;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #8b5cf6;
+  --chart-5: #ef4444;
+  --sidebar: #171717;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #262626;
+  --sidebar-ring: #3b82f6;
 }
 
 @layer base {
@@ -120,5 +119,36 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* 🎯 미니멀 애니메이션 - 필수만 유지 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 커스텀 스크롤바 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }

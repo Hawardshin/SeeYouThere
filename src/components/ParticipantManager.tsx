@@ -6,14 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Users, Car, Bus } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Plus, Trash2, Users, Bus, MapPin } from 'lucide-react';
 import AddressSearch from './AddressSearch';
 
 interface ParticipantManagerProps {
@@ -25,7 +18,8 @@ export default function ParticipantManager({ participants, onParticipantsChange 
   const [name, setName] = useState('');
   const [startLocation, setStartLocation] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
-  const [transportMode, setTransportMode] = useState<'car' | 'transit'>('transit');
+  // 대중교통으로 고정 (향후 확장 가능)
+  const transportMode = 'transit' as const;
 
   const handleAddParticipant = () => {
     if (!name.trim() || !startLocation.trim()) {
@@ -55,7 +49,6 @@ export default function ParticipantManager({ participants, onParticipantsChange 
     setName('');
     setStartLocation('');
     setCoordinates(undefined);
-    setTransportMode('transit');
   };
 
   const handleRemoveParticipant = (id: string) => {
@@ -69,24 +62,28 @@ export default function ParticipantManager({ participants, onParticipantsChange 
   };
 
   return (
-    <Card className="h-full border-2 shadow-lg hover:shadow-xl transition-all duration-300">
-      <CardHeader className="bg-primary/5 border-b-2 border-border/50">
-        <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-wide uppercase">
-          <Users className="h-6 w-6 text-primary" />
-          병력 배치
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3 text-xl font-bold">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Users className="h-5 w-5 text-primary" />
+          </div>
+          <span>참여자 등록</span>
         </CardTitle>
         <CardDescription className="text-base">
-          참여 인원의 출발 위치를 등록하세요
+          출발 위치를 등록하면 최적의 만남 장소를 찾아드려요
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-6">
         {/* 입력 폼 */}
-        <div className="space-y-3 p-4 bg-accent/30 rounded-lg border-2 border-dashed border-primary/30">
+        <div className="space-y-4 p-4 bg-muted/50 rounded-lg border">
           <div>
-            <label className="text-sm font-semibold mb-1.5 block uppercase tracking-wide text-foreground">병사 이름</label>
+            <label className="text-sm font-semibold mb-2 flex items-center gap-2 text-foreground">
+              👤 이름
+            </label>
             <Input
               type="text"
-              placeholder="예: 홍길동"
+              placeholder="이름을 입력하세요"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -94,103 +91,84 @@ export default function ParticipantManager({ participants, onParticipantsChange 
           </div>
 
           <div>
-            <label className="text-sm font-semibold mb-1.5 block uppercase tracking-wide text-foreground">출발 거점</label>
+            <label className="text-sm font-semibold mb-2 flex items-center gap-2 text-foreground">
+              📍 출발지
+            </label>
             <AddressSearch
               onSelect={(address: string, coords: { lat: number; lng: number }) => {
                 console.log('[ParticipantManager] AddressSearch onSelect 호출:', { address, coords });
                 setStartLocation(address);
                 setCoordinates(coords);
               }}
-              placeholder="출발지를 검색하세요 (예: 강남역)"
+              placeholder="예: 강남역, 홍대입구역"
             />
-            {/* 디버깅: 현재 좌표 표시 */}
+            {/* 좌표 표시 */}
             {coordinates && (
-              <div className="text-xs text-muted-foreground mt-1">
-                좌표: {coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}
+              <div className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1 animate-pulse font-medium">
+                ✓ 좌표: {coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}
               </div>
             )}
           </div>
 
-          <div>
-            <label className="text-sm font-semibold mb-1.5 block uppercase tracking-wide text-foreground">이동 수단</label>
-            <Select
-              value={transportMode}
-              onValueChange={(value) => setTransportMode(value as 'car' | 'transit')}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="transit">
-                  <div className="flex items-center gap-2">
-                    <Bus className="h-4 w-4" />
-                    <span>대중교통</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="car">
-                  <div className="flex items-center gap-2">
-                    <Car className="h-4 w-4" />
-                    <span>자동차</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          {/* 이동수단 안내 (선택 제거, 대중교통 고정) */}
+          <div className="text-xs text-foreground flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20">
+            <Bus className="h-4 w-4 text-primary" />
+            <span className="font-medium">이동수단: 대중교통 (지하철/버스)</span>
           </div>
 
           <Button 
             onClick={handleAddParticipant} 
-            className="w-full font-semibold tracking-wide uppercase shadow-md hover:shadow-lg transition-all duration-200"
+            className="w-full font-semibold py-5"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            병력 추가
+            <Plus className="h-5 w-5 mr-2" />
+            참여자 추가
           </Button>
         </div>
 
         {/* 참여자 목록 */}
-        <div>
-          <h3 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+            <Users className="h-4 w-4 text-primary" />
             참여자 목록 ({participants.length}명)
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
             {participants.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8 border rounded-lg bg-gray-50 dark:bg-gray-900">
-                참여자를 추가해주세요
-              </p>
+              <div className="text-center py-12 border-2 border-dashed rounded-xl bg-muted/30">
+                <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">아직 참여자가 없어요</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">위에서 첫 참여자를 추가해보세요!</p>
+              </div>
             ) : (
               participants.map((participant) => (
                 <div
                   key={participant.id}
-                  className="flex items-start justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                  className="group relative p-4 bg-card rounded-lg border hover:border-primary transition-all hover:shadow-sm"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="default" className="font-semibold">
-                        {participant.name}
-                      </Badge>
-                      {participant.transportMode === 'car' ? (
-                        <Badge variant="outline" className="text-xs">
-                          <Car className="h-3 w-3 mr-1" />
-                          자동차
+                  <div className="relative flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="default" className="font-semibold">
+                          {participant.name}
                         </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="border-primary/50 text-primary bg-primary/5">
                           <Bus className="h-3 w-3 mr-1" />
                           대중교통
                         </Badge>
-                      )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
+                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                        {participant.startLocation}
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                      {participant.startLocation}
-                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveParticipant(participant.id)}
+                      className="text-destructive hover:text-destructive/80 ml-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveParticipant(participant.id)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
               ))
             )}
