@@ -36,8 +36,10 @@ export interface LocationStats {
   locationName: string;
   totalTime: number; // 총 소요시간 합계
   maxTime: number; // 최대 소요시간
+  minTime: number; // 최소 소요시간
   avgTime: number; // 평균 소요시간
   fairnessScore: number; // 공평성 점수 (낮을수록 공평)
+  timeDifference: number; // 최대-최소 시간 차이 (균형성)
 }
 
 // 모임 정보

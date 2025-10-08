@@ -198,6 +198,11 @@ export default function Home() {
               <ParticipantManager
                 participants={participants}
                 onParticipantsChange={setParticipants}
+                candidatesCount={candidates.length}
+                onClearCandidates={() => {
+                  setCandidates([]);
+                  setSelectedLocationId(null);
+                }}
               />
             </motion.div>
           )}

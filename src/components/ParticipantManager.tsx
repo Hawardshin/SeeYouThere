@@ -12,9 +12,16 @@ import AddressSearch from './AddressSearch';
 interface ParticipantManagerProps {
   participants: Participant[];
   onParticipantsChange: (participants: Participant[]) => void;
+  candidatesCount?: number;
+  onClearCandidates?: () => void;
 }
 
-export default function ParticipantManager({ participants, onParticipantsChange }: ParticipantManagerProps) {
+export default function ParticipantManager({ 
+  participants, 
+  onParticipantsChange,
+  candidatesCount = 0,
+  onClearCandidates,
+}: ParticipantManagerProps) {
   const [name, setName] = useState('');
   const [startLocation, setStartLocation] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
@@ -30,6 +37,17 @@ export default function ParticipantManager({ participants, onParticipantsChange 
     if (!coordinates || typeof coordinates.lat !== 'number' || typeof coordinates.lng !== 'number') {
       alert('출발지 좌표를 찾을 수 없습니다. 검색 결과에서 장소를 선택해주세요.');
       return;
+    }
+
+    // 후보지가 있으면 초기화 경고
+    if (candidatesCount > 0 && onClearCandidates) {
+      const confirmClear = window.confirm(
+        `⚠️ 인원 추가 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
+      );
+      if (!confirmClear) {
+        return;
+      }
+      onClearCandidates();
     }
 
     const newParticipant: Participant = {
@@ -52,6 +70,17 @@ export default function ParticipantManager({ participants, onParticipantsChange 
   };
 
   const handleRemoveParticipant = (id: string) => {
+    // 후보지가 있으면 초기화 경고
+    if (candidatesCount > 0 && onClearCandidates) {
+      const confirmClear = window.confirm(
+        `⚠️ 인원 삭제 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
+      );
+      if (!confirmClear) {
+        return;
+      }
+      onClearCandidates();
+    }
+    
     onParticipantsChange(participants.filter(p => p.id !== id));
   };
 

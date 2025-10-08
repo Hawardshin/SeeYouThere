@@ -17,6 +17,7 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
       const times = candidate.travelTimes.map(tt => tt.duration);
       const totalTime = times.reduce((sum, time) => sum + time, 0);
       const maxTime = Math.max(...times, 0);
+      const minTime = Math.min(...times, Infinity);
       const avgTime = times.length > 0 ? totalTime / times.length : 0;
       
       // 공평성 점수: 표준편차 사용 (낮을수록 공평)
@@ -29,12 +30,15 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
         locationName: candidate.name,
         totalTime,
         maxTime,
+        minTime,
         avgTime,
         fairnessScore,
+        timeDifference: maxTime - minTime, // 최대-최소 시간 차이
       };
     });
   }, [candidates]);
 
+  // 가장 공평한 장소 (공평성 점수가 낮은 = 표준편차가 낮은)
   const fairestLocation = useMemo(() => {
     if (stats.length === 0) return null;
     return stats.reduce((prev, curr) => 
@@ -42,10 +46,27 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
     );
   }, [stats]);
 
+  // 가장 빠른 장소 (총합 시간이 적은)
   const fastestLocation = useMemo(() => {
     if (stats.length === 0) return null;
     return stats.reduce((prev, curr) => 
       curr.totalTime < prev.totalTime ? curr : prev
+    );
+  }, [stats]);
+
+  // 최대 시간이 가장 짧은 장소 (가장 먼 사람도 빨리 도착)
+  const minMaxTimeLocation = useMemo(() => {
+    if (stats.length === 0) return null;
+    return stats.reduce((prev, curr) => 
+      curr.maxTime < prev.maxTime ? curr : prev
+    );
+  }, [stats]);
+
+  // 시간 차이가 가장 적은 장소 (균형성 최고)
+  const mostBalancedLocation = useMemo(() => {
+    if (stats.length === 0) return null;
+    return stats.reduce((prev, curr) => 
+      curr.timeDifference < prev.timeDifference ? curr : prev
     );
   }, [stats]);
 
@@ -74,13 +95,73 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
     <div className="space-y-6">
       {/* 추천 장소 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 최대 시간 최소 (가장 먼 사람도 빨리 도착) */}
+        {minMaxTimeLocation && (
+          <Card className="border-2 border-purple-500/50 bg-purple-50/50 dark:bg-purple-950/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
+                <Award className="h-5 w-5" />
+                최대 시간 최소
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold">
+                  {minMaxTimeLocation.locationName}
+                </h3>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <Badge className="bg-purple-600 hover:bg-purple-700">
+                    최대 {minMaxTimeLocation.maxTime}분
+                  </Badge>
+                  <Badge variant="outline">
+                    평균 {Math.round(minMaxTimeLocation.avgTime)}분
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  가장 먼 사람도 {minMaxTimeLocation.maxTime}분 내 도착
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 시간 차이 최소 (균형성 최고) */}
+        {mostBalancedLocation && (
+          <Card className="border-2 border-orange-500/50 bg-orange-50/50 dark:bg-orange-950/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
+                <Trophy className="h-5 w-5" />
+                균형성 최고
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold">
+                  {mostBalancedLocation.locationName}
+                </h3>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <Badge className="bg-orange-600 hover:bg-orange-700">
+                    차이 {mostBalancedLocation.timeDifference}분
+                  </Badge>
+                  <Badge variant="outline">
+                    {mostBalancedLocation.minTime}~{mostBalancedLocation.maxTime}분
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  최대-최소 시간 차이가 가장 적습니다
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {/* 가장 공평한 장소 */}
         {fairestLocation && (
           <Card className="border-2 border-green-500/50 bg-green-50/50 dark:bg-green-950/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
                 <Trophy className="h-5 w-5" />
-                가장 공평한 장소
+                표준편차 최소
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -89,15 +170,15 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
                   {fairestLocation.locationName}
                 </h3>
                 <div className="flex flex-wrap gap-2 text-sm">
+                  <Badge className="bg-green-600 hover:bg-green-700">
+                    공평도 {fairestLocation.fairnessScore.toFixed(1)}
+                  </Badge>
                   <Badge variant="outline">
                     평균 {Math.round(fairestLocation.avgTime)}분
                   </Badge>
-                  <Badge variant="outline">
-                    공평도 {fairestLocation.fairnessScore.toFixed(1)}
-                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  모든 참여자의 소요시간이 비슷합니다
+                  모든 참여자의 소요시간이 가장 균일합니다
                 </p>
               </div>
             </CardContent>
@@ -110,7 +191,7 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                 <TrendingUp className="h-5 w-5" />
-                가장 빠른 장소
+                총합 시간 최소
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -119,7 +200,7 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
                   {fastestLocation.locationName}
                 </h3>
                 <div className="flex flex-wrap gap-2 text-sm">
-                  <Badge variant="outline">
+                  <Badge className="bg-blue-600 hover:bg-blue-700">
                     총합 {fastestLocation.totalTime}분
                   </Badge>
                   <Badge variant="outline">
@@ -127,7 +208,7 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  모든 참여자의 총 이동시간이 가장 적습니다
+                  모든 참여자의 이동 시간 합계가 가장 적습니다
                 </p>
               </div>
             </CardContent>

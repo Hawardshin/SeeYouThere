@@ -132,7 +132,8 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
 export async function getTravelTime(
   origin: Coordinates,
   destination: Coordinates,
-  mode: 'driving' | 'transit' | 'walking' = 'transit'
+  mode: 'driving' | 'transit' | 'walking' = 'transit',
+  departureTime?: string // HH:mm 형식의 시간
 ): Promise<{ duration: number; distance: number }> {
   try {
     // 좌표 유효성 검사
@@ -148,16 +149,37 @@ export async function getTravelTime(
     const originStr = `${origin.lat},${origin.lng}`;
     const destStr = `${destination.lat},${destination.lng}`;
     
+    // 출발 시간을 Unix timestamp로 변환
+    let departureTimestamp: string | undefined;
+    if (departureTime && mode === 'transit') {
+      const [hours, minutes] = departureTime.split(':').map(Number);
+      const now = new Date();
+      const departureDate = new Date(now);
+      departureDate.setHours(hours, minutes, 0, 0);
+      
+      // 과거 시간이면 내일로 설정
+      if (departureDate < now) {
+        departureDate.setDate(departureDate.getDate() + 1);
+      }
+      
+      departureTimestamp = Math.floor(departureDate.getTime() / 1000).toString();
+      console.log(`[getTravelTime] 출발 시간: ${departureTime} → ${departureDate.toLocaleString('ko-KR')}`);
+    }
+    
     console.log(`[getTravelTime] 요청:`, { 
       origin: originStr, 
       destination: destStr, 
-      mode 
+      mode,
+      departureTime: departureTimestamp ? new Date(parseInt(departureTimestamp) * 1000).toLocaleString('ko-KR') : 'now'
     });
     
-    let response = await fetch(
-      `/api/maps/distancematrix?origins=${originStr}&destinations=${destStr}&mode=${mode}`,
-      { cache: 'no-store' }
-    );
+    // API 요청 URL 구성
+    let apiUrl = `/api/maps/distancematrix?origins=${originStr}&destinations=${destStr}&mode=${mode}`;
+    if (departureTimestamp) {
+      apiUrl += `&departureTime=${departureTimestamp}`;
+    }
+    
+    let response = await fetch(apiUrl, { cache: 'no-store' });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -165,7 +187,7 @@ export async function getTravelTime(
       
       // transit 모드 실패 시 driving으로 재시도
       if (mode === 'transit') {
-        console.warn('대중교통 경로 실패, 자동차 경로로 재시도...');
+        console.warn('⚠️ 대중교통 경로 실패, 자동차 경로로 재시도...');
         response = await fetch(
           `/api/maps/distancematrix?origins=${originStr}&destinations=${destStr}&mode=driving`,
           { cache: 'no-store' }
@@ -176,9 +198,12 @@ export async function getTravelTime(
           if (data.status === 'OK' && data.rows && data.rows.length > 0) {
             const element = data.rows[0].elements[0];
             if (element.status === 'OK') {
-              console.log(`✅ 자동차 경로로 성공:`, element.duration.text);
+              const duration = Math.round(element.duration.value / 60);
+              // 대중교통 대신 자동차 시간 사용 시 1.3배 가중치 (대중교통이 보통 더 오래 걸림)
+              const adjustedDuration = Math.round(duration * 1.3);
+              console.log(`✅ 자동차 경로로 성공 (조정됨): ${duration}분 → ${adjustedDuration}분`);
               return {
-                duration: Math.round(element.duration.value / 60),
+                duration: adjustedDuration,
                 distance: element.distance.value,
               };
             }
@@ -186,7 +211,7 @@ export async function getTravelTime(
         }
       }
       
-      console.warn('API 실패, 더미 데이터를 사용합니다.');
+      console.warn('⚠️ API 실패, 직선 거리 기반 추정치 사용');
       return calculateDummyTravelTime(origin, destination);
     }
 
@@ -196,18 +221,23 @@ export async function getTravelTime(
       const element = data.rows[0].elements[0];
       
       if (element.status === 'OK') {
-        console.log(`✅ ${mode} 경로 성공:`, element.duration.text, element.distance.text);
+        const duration = Math.round(element.duration.value / 60);
+        console.log(`✅ ${mode} 경로 성공:`, {
+          duration: element.duration.text,
+          distance: element.distance.text,
+          duration_minutes: duration
+        });
         return {
-          duration: Math.round(element.duration.value / 60), // 초를 분으로 변환
+          duration: duration, // 초를 분으로 변환
           distance: element.distance.value, // 미터
         };
       }
       
-      console.warn(`Distance Matrix element 상태: ${element.status}`);
+      console.warn(`⚠️ Distance Matrix element 상태: ${element.status}`);
       
-      // transit 실패 시 driving으로 재시도
+      // transit 실패 시 driving으로 재시도 (두 번째 시도)
       if (mode === 'transit' && element.status !== 'OK') {
-        console.warn('대중교통 경로 불가, 자동차 경로로 재시도...');
+        console.warn('⚠️ 대중교통 경로 불가 (element 상태), 자동차 경로로 재시도...');
         const fallbackResponse = await fetch(
           `/api/maps/distancematrix?origins=${originStr}&destinations=${destStr}&mode=driving`,
           { cache: 'no-store' }
@@ -218,9 +248,11 @@ export async function getTravelTime(
           if (fallbackData.status === 'OK' && fallbackData.rows && fallbackData.rows.length > 0) {
             const fallbackElement = fallbackData.rows[0].elements[0];
             if (fallbackElement.status === 'OK') {
-              console.log(`✅ 자동차 경로로 성공:`, fallbackElement.duration.text);
+              const duration = Math.round(fallbackElement.duration.value / 60);
+              const adjustedDuration = Math.round(duration * 1.3);
+              console.log(`✅ 자동차 경로로 성공 (조정됨): ${duration}분 → ${adjustedDuration}분`);
               return {
-                duration: Math.round(fallbackElement.duration.value / 60),
+                duration: adjustedDuration,
                 distance: fallbackElement.distance.value,
               };
             }
@@ -228,14 +260,14 @@ export async function getTravelTime(
         }
       }
     } else {
-      console.warn(`Distance Matrix API 상태: ${data.status}`, data.error_message);
+      console.warn(`⚠️ Distance Matrix API 상태: ${data.status}`, data.error_message);
     }
 
     // 모든 시도 실패 시 더미 데이터
-    console.warn('모든 경로 탐색 실패, 직선 거리 기반 추정치 사용');
+    console.warn('⚠️ 모든 경로 탐색 실패, 직선 거리 기반 추정치 사용');
     return calculateDummyTravelTime(origin, destination);
   } catch (error) {
-    console.error('거리/시간 계산 오류:', error);
+    console.error('❌ 거리/시간 계산 오류:', error);
     return calculateDummyTravelTime(origin, destination);
   }
 }
@@ -271,21 +303,46 @@ export function calculateDummyTravelTime(
     Math.sin(dLng / 2);
   
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c * 1000; // 미터로 변환
+  const straightDistance = R * c; // km 단위
 
-  // 평균 속도로 시간 계산 (대중교통 기준 30km/h)
-  const duration = Math.round((distance / 1000 / 30) * 60); // 분 단위
+  // 실제 도로 거리는 직선 거리의 약 1.3배 (서울 기준)
+  const roadDistance = straightDistance * 1.3;
+  const distanceInMeters = Math.round(roadDistance * 1000);
 
-  console.log('[calculateDummyTravelTime] 추정 결과:', {
-    from: startCoords,
-    to: endCoords,
-    duration: `${Math.max(duration, 5)}분`,
-    distance: `${(Math.round(distance) / 1000).toFixed(1)}km`,
+  // 서울 대중교통 평균 속도 고려:
+  // - 5km 이하: 지하철 환승 포함 평균 25km/h
+  // - 5-15km: 지하철 직통 평균 35km/h  
+  // - 15km 이상: 장거리 평균 40km/h
+  let avgSpeed = 25;
+  if (roadDistance > 15) {
+    avgSpeed = 40;
+  } else if (roadDistance > 5) {
+    avgSpeed = 35;
+  }
+
+  // 시간 계산 (분 단위)
+  let duration = Math.round((roadDistance / avgSpeed) * 60);
+  
+  // 최소 시간 설정:
+  // - 1km 이하: 최소 5분 (도보 + 대기)
+  // - 1-3km: 최소 10분
+  // - 3km 이상: 계산된 시간 사용
+  if (roadDistance < 1) {
+    duration = Math.max(duration, 5);
+  } else if (roadDistance < 3) {
+    duration = Math.max(duration, 10);
+  }
+
+  console.log('[calculateDummyTravelTime] 📍 추정 결과:', {
+    직선거리: `${straightDistance.toFixed(2)}km`,
+    도로거리: `${roadDistance.toFixed(2)}km`,
+    평균속도: `${avgSpeed}km/h`,
+    소요시간: `${duration}분`,
   });
 
   return {
-    duration: Math.max(duration, 5), // 최소 5분
-    distance: Math.round(distance),
+    duration: duration,
+    distance: distanceInMeters,
   };
 }
 

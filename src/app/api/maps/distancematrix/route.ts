@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   const origins = searchParams.get('origins');
   const destinations = searchParams.get('destinations');
   const mode = searchParams.get('mode') || 'transit';
+  const departureTime = searchParams.get('departureTime'); // 출발 시간 추가
 
   if (!origins || !destinations) {
     return NextResponse.json({ error: 'origins and destinations parameters are required' }, { status: 400 });
@@ -28,11 +29,19 @@ export async function GET(request: NextRequest) {
       units: 'metric',
     });
 
-    // 대중교통 모드일 때 출발 시간 추가 (현재 시간)
+    // 대중교통 모드일 때 출발 시간 설정
     if (mode === 'transit') {
-      params.append('departure_time', 'now');
-      // 선호 대중교통 수단 (지하철, 버스)
-      params.append('transit_mode', 'subway|bus|train');
+      if (departureTime) {
+        // 사용자가 설정한 시간 사용 (Unix timestamp)
+        params.append('departure_time', departureTime);
+      } else {
+        // 기본값: 현재 시간
+        params.append('departure_time', 'now');
+      }
+      // 한국 대중교통 수단 우선순위: 지하철 > 버스 > 기차
+      params.append('transit_mode', 'subway|bus|train|rail');
+      // 대중교통 경로 선호: 최소 환승
+      params.append('transit_routing_preference', 'fewer_transfers');
     }
 
     const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params.toString()}`;
@@ -41,7 +50,8 @@ export async function GET(request: NextRequest) {
       origins, 
       destinations, 
       mode,
-      departure_time: mode === 'transit' ? 'now' : undefined
+      departure_time: mode === 'transit' ? (departureTime || 'now') : undefined,
+      transit_routing: mode === 'transit' ? 'fewer_transfers' : undefined
     });
 
     const response = await fetch(url);
@@ -59,7 +69,6 @@ export async function GET(request: NextRequest) {
     
     // 상세 응답 로깅
     console.log('[Distance Matrix] 응답 상태:', data.status);
-    console.log('[Distance Matrix] 전체 응답:', JSON.stringify(data, null, 2));
     
     if (data.rows && data.rows[0] && data.rows[0].elements && data.rows[0].elements[0]) {
       const element = data.rows[0].elements[0];
@@ -80,6 +89,7 @@ export async function GET(request: NextRequest) {
           distance: element.distance?.text,
           duration_value: element.duration?.value,
           distance_value: element.distance?.value,
+          duration_in_traffic: element.duration_in_traffic?.text,
         });
       }
     }
