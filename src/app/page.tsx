@@ -75,7 +75,10 @@ export default function Home() {
       console.log('📦 방 데이터 로드:', data); // 디버깅 로그
 
       if (data.success) {
-        setMeetingTitle(data.data.meetingTitle || '새로운 모임');
+        // meetingTitle이 존재하는 경우에만 업데이트 (빈 문자열로 덮어쓰지 않도록)
+        if (data.data.meetingTitle) {
+          setMeetingTitle(data.data.meetingTitle);
+        }
         setParticipants(data.data.participants || []);
         setCandidates(data.data.candidates || []);
         
