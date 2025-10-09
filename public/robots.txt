@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Disallow admin routes (if any)
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://see-you-there.vercel.app/sitemap.xml
