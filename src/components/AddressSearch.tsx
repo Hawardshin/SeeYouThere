@@ -25,7 +25,6 @@ export default function AddressSearch({
   const [showNoResults, setShowNoResults] = useState(false);
   const [previewPlace, setPreviewPlace] = useState<PlaceResult | null>(null); // 미리보기 중인 장소
   const [confirmedPlace, setConfirmedPlace] = useState<PlaceResult | null>(null); // 확정된 장소
-  const [mobileView, setMobileView] = useState<'list' | 'map'>('list'); // 모바일 탭 전환
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 장소 클릭 (미리보기)
@@ -157,127 +156,92 @@ export default function AddressSearch({
         </div>
       )}
 
-      {/* 네이버 지도 스타일 레이아웃: 좌측 리스트 + 우측 지도 */}
+      {/* 상하 레이아웃: 상단 가로 스크롤 리스트 + 하단 지도 */}
       {isOpen && results.length > 0 && (
-        <div className="border-2 border-primary/30 rounded-lg p-4 bg-card shadow-2xl">
-          {/* 모바일 탭 버튼 */}
-          <div className="lg:hidden flex gap-2 mb-4 p-1 bg-muted rounded-lg">
-            <button
-              onClick={() => setMobileView('list')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
-                mobileView === 'list'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              📋 목록 ({results.length})
-            </button>
-            <button
-              onClick={() => setMobileView('map')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
-                mobileView === 'map'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              🗺️ 지도
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* 좌측: 검색 결과 리스트 */}
-            <div className={`space-y-2 ${mobileView === 'map' ? 'hidden lg:block' : ''}`}>
-              <h3 className="text-sm font-semibold text-foreground mb-3 sticky top-0 bg-card py-2 z-10">
-                검색 결과 ({results.length}개)
-              </h3>
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+        <div className="border-2 border-primary/30 rounded-lg overflow-hidden bg-card shadow-2xl">
+          {/* 상단: 가로 스크롤 검색 결과 */}
+          <div className="p-4 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground mb-3">
+              검색 결과 ({results.length}개)
+            </h3>
+            <div className="overflow-x-auto pb-2 -mx-2 px-2">
+              <div className="flex gap-3 min-w-min">
                 {results.map((place, index) => (
-                  <div key={place.placeId} className="space-y-0">
-                    {/* 장소 정보 카드 */}
-                    <button
-                      onClick={() => {
-                        handlePreviewPlace(place);
-                        setMobileView('map'); // 모바일에서 클릭 시 지도로 전환
-                      }}
-                      className={`w-full px-4 py-3 text-left transition-all duration-150 border rounded-lg flex items-start gap-3 ${
-                        previewPlace?.placeId === place.placeId
-                          ? 'border-primary bg-primary/10 shadow-md'
-                          : 'border-border hover:border-primary/50 hover:bg-accent/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0 mt-0.5">
+                  <button
+                    key={place.placeId}
+                    onClick={() => handlePreviewPlace(place)}
+                    className={`flex-shrink-0 w-[200px] px-4 py-3 text-left transition-all duration-150 border rounded-lg ${
+                      previewPlace?.placeId === place.placeId
+                        ? 'border-primary bg-primary/10 shadow-md'
+                        : 'border-border hover:border-primary/50 hover:bg-accent/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">
                         {index + 1}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm truncate text-foreground">
-                          {place.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate mt-1">
-                          {place.address}
-                        </div>
-                      </div>
-                      <MapPin className={`h-5 w-5 shrink-0 mt-0.5 ${
+                      <MapPin className={`h-4 w-4 ${
                         previewPlace?.placeId === place.placeId ? 'text-primary' : 'text-muted-foreground'
                       }`} />
-                    </button>
-
-                    {/* 선택된 장소의 설정 버튼 */}
-                    {previewPlace?.placeId === place.placeId && (
-                      <div className="px-4 pb-3 pt-2 animate-in slide-in-from-top-2 duration-200">
-                        <button
-                          onClick={handleConfirmPlace}
-                          className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
-                        >
-                          <MapPin className="h-4 w-4" />
-                          이 위치로 설정
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                    <div className="font-semibold text-sm text-foreground mb-1">
+                      {place.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground line-clamp-2">
+                      {place.address}
+                    </div>
+                  </button>
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* 우측: 지도 */}
-            <div className={`lg:sticky lg:top-4 ${mobileView === 'list' ? 'hidden lg:block' : ''}`}>
-              <div className="h-[500px]">
-                <MapView
-                  locations={
-                    previewPlace
-                      ? [
-                          {
-                            lat: previewPlace.coordinates.lat,
-                            lng: previewPlace.coordinates.lng,
-                            name: previewPlace.name,
-                            address: previewPlace.address,
-                            isSelected: true,
-                          },
-                        ]
-                      : results.map((place) => ({
-                          lat: place.coordinates.lat,
-                          lng: place.coordinates.lng,
-                          name: place.name,
-                          address: place.address,
-                          isSelected: false,
-                        }))
-                  }
-                  className="h-full rounded-lg"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                💡 장소를 클릭하면 지도에서 위치를 확인할 수 있습니다
-              </p>
-              
-              {/* 모바일: 목록으로 돌아가기 버튼 */}
-              {previewPlace && (
+          {/* 하단: 지도 (항상 표시) */}
+          <div className="relative h-[400px] lg:h-[500px]">
+            <MapView
+              locations={
+                previewPlace
+                  ? [
+                      {
+                        lat: previewPlace.coordinates.lat,
+                        lng: previewPlace.coordinates.lng,
+                        name: previewPlace.name,
+                        address: previewPlace.address,
+                        isSelected: true,
+                      },
+                    ]
+                  : results.map((place) => ({
+                      lat: place.coordinates.lat,
+                      lng: place.coordinates.lng,
+                      name: place.name,
+                      address: place.address,
+                      isSelected: false,
+                    }))
+              }
+              className="h-full"
+            />
+            
+            {/* 플로팅 설정 버튼 */}
+            {previewPlace && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-10 animate-in slide-in-from-bottom-4 duration-300">
                 <button
-                  onClick={() => setMobileView('list')}
-                  className="lg:hidden w-full mt-3 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 font-medium text-sm transition-all"
+                  onClick={handleConfirmPlace}
+                  className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
                 >
-                  ← 목록으로 돌아가기
+                  <MapPin className="h-5 w-5" />
+                  <span className="text-base">{previewPlace.name} 선택</span>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
+            
+            {/* 안내 메시지 */}
+            {!previewPlace && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-md">
+                <p className="text-xs text-muted-foreground text-center">
+                  💡 장소를 클릭하면 위치를 확인할 수 있습니다
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
