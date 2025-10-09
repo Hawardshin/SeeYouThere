@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Loader2 } from 'lucide-react';
+import { Search, MapPin, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from './ui/input';
-import { Badge } from './ui/badge';
 import { searchPlaces, type PlaceResult } from '@/lib/mapApi';
 import MapView from './MapView';
 
@@ -11,12 +10,16 @@ interface AddressSearchProps {
   onSelect: (address: string, coordinates: { lat: number; lng: number }) => void;
   placeholder?: string;
   defaultValue?: string;
+  buttonLabel?: string; // 플로팅 버튼 텍스트 (예: "참여자 추가", "후보지 추가")
+  onConfirm?: () => void; // 플로팅 버튼 클릭 시 추가 동작
 }
 
 export default function AddressSearch({ 
   onSelect, 
   placeholder = "장소를 검색하세요",
-  defaultValue = ""
+  defaultValue = "",
+  buttonLabel = "선택",
+  onConfirm,
 }: AddressSearchProps) {
   const [query, setQuery] = useState(defaultValue);
   const [results, setResults] = useState<PlaceResult[]>([]);
@@ -24,26 +27,46 @@ export default function AddressSearch({
   const [isLoading, setIsLoading] = useState(false);
   const [showNoResults, setShowNoResults] = useState(false);
   const [previewPlace, setPreviewPlace] = useState<PlaceResult | null>(null); // 미리보기 중인 장소
-  const [confirmedPlace, setConfirmedPlace] = useState<PlaceResult | null>(null); // 확정된 장소
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // 스크롤 컨테이너 ref
 
-  // 장소 클릭 (미리보기)
+  // 장소 클릭 (미리보기만)
   const handlePreviewPlace = (place: PlaceResult) => {
     console.log('[AddressSearch] 장소 미리보기:', place);
-    setPreviewPlace(place); // 지도에 미리보기 표시
+    setPreviewPlace(place);
   };
 
-  // 장소 확정 (설정 버튼)
+  // 참여자 추가 버튼 클릭 (확정)
   const handleConfirmPlace = () => {
     if (!previewPlace) return;
     
     console.log('[AddressSearch] 장소 확정:', previewPlace);
-    setConfirmedPlace(previewPlace);
-    setQuery(previewPlace.name); // 장소 이름 표시
+    onSelect(previewPlace.name, previewPlace.coordinates);
+    
+    // onConfirm 콜백이 있으면 실행 (ParticipantManager의 handleAddParticipant 등)
+    if (onConfirm) {
+      onConfirm();
+    }
+    
+    // 선택 완료 후 초기화
+    setQuery('');
+    setResults([]);
+    setPreviewPlace(null);
     setIsOpen(false);
     setShowNoResults(false);
-    
-    onSelect(previewPlace.name, previewPlace.coordinates);
+  };
+
+  // 좌우 스크롤 버튼
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -220, behavior: 'smooth' }); // 카드 너비 + gap
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 220, behavior: 'smooth' });
+    }
   };
 
   // 새로운 검색 시 상태 초기화
@@ -97,26 +120,6 @@ export default function AddressSearch({
 
   return (
     <div ref={dropdownRef} className="relative w-full">
-      {/* 확정된 장소 표시 */}
-      {confirmedPlace && !isOpen && (
-        <div className="mb-3 p-3 bg-primary/10 border-2 border-primary/30 rounded-lg">
-          <div className="flex items-start gap-2">
-            <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm text-foreground">
-                {confirmedPlace.name}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {confirmedPlace.address}
-              </div>
-            </div>
-            <Badge className="bg-primary text-primary-foreground shrink-0">
-              설정됨
-            </Badge>
-          </div>
-        </div>
-      )}
-
       {/* 검색창과 검색 버튼 */}
       <div className="relative flex gap-2 mb-4">
         <div className="relative flex-1">
@@ -156,15 +159,33 @@ export default function AddressSearch({
         </div>
       )}
 
-      {/* 상하 레이아웃: 상단 가로 스크롤 리스트 + 하단 지도 */}
-      {isOpen && results.length > 0 && (
-        <div className="border-2 border-primary/30 rounded-lg overflow-hidden bg-card shadow-2xl">
-          {/* 상단: 가로 스크롤 검색 결과 */}
+      {/* 항상 표시되는 지도 영역 */}
+      <div className="border-2 border-primary/30 rounded-lg overflow-hidden bg-card shadow-2xl">
+        {/* 상단: 가로 스크롤 검색 결과 (검색 후에만) */}
+        {isOpen && results.length > 0 && (
           <div className="p-4 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground mb-3">
-              검색 결과 ({results.length}개)
-            </h3>
-            <div className="overflow-x-auto pb-2 -mx-2 px-2">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground">
+                검색 결과 ({results.length}개)
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={scrollLeft}
+                  className="p-1.5 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors"
+                  aria-label="왼쪽으로 스크롤"
+                >
+                  <ChevronLeft className="h-4 w-4 text-primary" />
+                </button>
+                <button
+                  onClick={scrollRight}
+                  className="p-1.5 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors"
+                  aria-label="오른쪽으로 스크롤"
+                >
+                  <ChevronRight className="h-4 w-4 text-primary" />
+                </button>
+              </div>
+            </div>
+            <div ref={scrollContainerRef} className="overflow-x-auto pb-2 -mx-2 px-2 scroll-smooth">
               <div className="flex gap-3 min-w-min">
                 {results.map((place, index) => (
                   <button
@@ -195,56 +216,67 @@ export default function AddressSearch({
               </div>
             </div>
           </div>
+        )}
 
-          {/* 하단: 지도 (항상 표시) */}
-          <div className="relative h-[400px] lg:h-[500px]">
-            <MapView
-              locations={
-                previewPlace
-                  ? [
-                      {
-                        lat: previewPlace.coordinates.lat,
-                        lng: previewPlace.coordinates.lng,
-                        name: previewPlace.name,
-                        address: previewPlace.address,
-                        isSelected: true,
-                      },
-                    ]
-                  : results.map((place) => ({
-                      lat: place.coordinates.lat,
-                      lng: place.coordinates.lng,
-                      name: place.name,
-                      address: place.address,
-                      isSelected: false,
-                    }))
-              }
-              className="h-full"
-            />
-            
-            {/* 플로팅 설정 버튼 */}
-            {previewPlace && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-10 animate-in slide-in-from-bottom-4 duration-300">
-                <button
-                  onClick={handleConfirmPlace}
-                  className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
-                >
-                  <MapPin className="h-5 w-5" />
-                  <span className="text-base">{previewPlace.name} 선택</span>
-                </button>
-              </div>
-            )}
-            
-            {/* 안내 메시지 */}
-            {!previewPlace && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-md">
-                <p className="text-xs text-muted-foreground text-center">
-                  💡 장소를 클릭하면 위치를 확인할 수 있습니다
-                </p>
-              </div>
-            )}
-          </div>
+        {/* 하단: 지도 (항상 표시) */}
+        <div className="relative h-[400px] lg:h-[500px]">
+          <MapView
+            locations={
+              previewPlace
+                ? [
+                    {
+                      lat: previewPlace.coordinates.lat,
+                      lng: previewPlace.coordinates.lng,
+                      name: previewPlace.name,
+                      address: previewPlace.address,
+                      isSelected: true,
+                    },
+                  ]
+                : results.length > 0
+                ? results.map((place) => ({
+                    lat: place.coordinates.lat,
+                    lng: place.coordinates.lng,
+                    name: place.name,
+                    address: place.address,
+                    isSelected: false,
+                  }))
+                : []
+            }
+            className="h-full"
+          />
+          
+          {/* 플로팅 참여자 추가 버튼 */}
+          {previewPlace && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-10 animate-in slide-in-from-bottom-4 duration-300">
+              <button
+                onClick={handleConfirmPlace}
+                className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                <MapPin className="h-5 w-5" />
+                <span className="text-base">{buttonLabel}</span>
+              </button>
+            </div>
+          )}
+          
+          {/* 안내 메시지 */}
+          {!previewPlace && results.length > 0 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-md">
+              <p className="text-xs text-muted-foreground text-center">
+                💡 장소를 클릭하면 위치를 확인할 수 있습니다
+              </p>
+            </div>
+          )}
+          
+          {/* 검색 전 안내 메시지 */}
+          {results.length === 0 && !showNoResults && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-md">
+              <p className="text-sm text-muted-foreground text-center">
+                🔍 위에서 장소를 검색해주세요
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -38,32 +38,33 @@ export const popularLocations: PopularLocation[] = [
   {
     id: 'chungmuro',
     name: '충무로역',
-    address: '서울특별시 중구 퇴계로 지하 199',
-    coordinates: { lat: 37.559771, lng: 126.94236699999999 },
+    address: '대한민국 서울특별시 신촌동',
+    coordinates: { lat: 37.561243, lng: 126.99428
+ },
   },
   {
     id: 'sinchon',
     name: '신촌역',
     address: '대한민국 서울특별시 신촌동',
-    coordinates: { lat: 37.555134, lng: 126.936893 },
+      coordinates: { lat: 37.559771, lng: 126.94236699999999 },
   },
   {
     id: 'euljiro',
     name: '을지로입구역',
     address: '대한민국 서울특별시 중구 을지로동 42',
-    coordinates: { lat: 37.566065, lng: 126.98267899999999 },
+    coordinates: { lat: 37.566014, lng: 126.982618 },
   },
   {
     id: 'sadang',
     name: '사당역',
     address: '대한민국 서울특별시',
-    coordinates: { lat: 37.4753803, lng: 126.98203300000002 },
+    coordinates: { lat: 37.47653, lng: 126.981685 },
   },
   {
     id: 'konkuk',
     name: '건대입구역',
     address: '서울특별시 광진구 능동로 209',
-    coordinates: { lat: 37.540569, lng: 127.069759 },
+    coordinates: { lat: 37.540693, lng: 127.07023 },
   },
   {
     id: 'hongdae',
@@ -107,4 +108,16 @@ export const popularLocations: PopularLocation[] = [
     address: '서울특별시 종로구 종로 지하 143',
     coordinates: { lat: 37.571607, lng: 126.991806 },
   },
+  {
+    id: 'noryangjin',
+    name: '노량진역',
+    address: '서울특별시 동작구 노량진로 151 ',
+    coordinates: { lat: 37.514219, lng: 126.942454 },
+  },
+  {
+    id: 'munrae',
+    name: '문래역',
+    address: '서울특별시 영등포구 문래동3가 55-1',
+    coordinates: { lat: 37.517933, lng: 126.89476 },
+  }
 ];

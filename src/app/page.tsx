@@ -19,8 +19,16 @@ export default function Home() {
   const [candidates, setCandidates] = useState<CandidateLocation[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   
-  // 출발 시간 설정 (기본값: 오후 1시)
-  const [departureTime, setDepartureTime] = useState('13:00');
+  // 출발 시간 설정 (기본값: 오늘 오후 1시)
+  const getDefaultDepartureTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}T13:00`;
+  };
+  
+  const [departureTime, setDepartureTime] = useState(getDefaultDepartureTime());
   
   // 방 관련 상태
   const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null);
@@ -141,7 +149,6 @@ export default function Home() {
           )}
         </motion.div>
 
-        {/* 프로그레스 스텝 - 모바일 최적화 */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { Participant } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Users, Bus, MapPin } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Trash2, Users, Bus, MapPin } from 'lucide-react';
 import AddressSearch from './AddressSearch';
+import SubwayStationPicker from './SubwayStationPicker';
+import { subwayStations } from '@/data/subwayStations';
 
 interface ParticipantManagerProps {
   participants: Participant[];
@@ -25,8 +27,10 @@ export default function ParticipantManager({
   const [name, setName] = useState('');
   const [startLocation, setStartLocation] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
-  // 대중교통으로 고정 (향후 확장 가능)
   const transportMode = 'transit' as const;
+  
+  // 출발지 선택 방법 탭
+  const [startLocationTab, setStartLocationTab] = useState<'search' | 'subway'>('search');
 
   const handleAddParticipant = () => {
     if (!name.trim() || !startLocation.trim()) {
@@ -39,14 +43,11 @@ export default function ParticipantManager({
       return;
     }
 
-    // 후보지가 있으면 초기화 경고
     if (candidatesCount > 0 && onClearCandidates) {
       const confirmClear = window.confirm(
         `⚠️ 인원 추가 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
       );
-      if (!confirmClear) {
-        return;
-      }
+      if (!confirmClear) return;
       onClearCandidates();
     }
 
@@ -54,14 +55,40 @@ export default function ParticipantManager({
       id: Date.now().toString(),
       name: name.trim(),
       startLocation: startLocation.trim(),
-      coordinates: {
-        lat: coordinates.lat,
-        lng: coordinates.lng,
-      },
+      coordinates: { lat: coordinates.lat, lng: coordinates.lng },
       transportMode,
     };
 
-    console.log('[ParticipantManager] 새 참여자 추가:', newParticipant);
+    onParticipantsChange([...participants, newParticipant]);
+    setName('');
+    setStartLocation('');
+    setCoordinates(undefined);
+  };
+
+  const handleAddParticipantWithSubway = (stationId: string) => {
+    if (!name.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
+
+    const station = subwayStations.find(s => s.id === stationId);
+    if (!station) return;
+
+    if (candidatesCount > 0 && onClearCandidates) {
+      const confirmClear = window.confirm(
+        `⚠️ 인원 추가 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
+      );
+      if (!confirmClear) return;
+      onClearCandidates();
+    }
+
+    const newParticipant: Participant = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      startLocation: `${station.name}역`,
+      coordinates: station.coordinates,
+      transportMode,
+    };
 
     onParticipantsChange([...participants, newParticipant]);
     setName('');
@@ -70,24 +97,18 @@ export default function ParticipantManager({
   };
 
   const handleRemoveParticipant = (id: string) => {
-    // 후보지가 있으면 초기화 경고
     if (candidatesCount > 0 && onClearCandidates) {
       const confirmClear = window.confirm(
         `⚠️ 인원 삭제 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
       );
-      if (!confirmClear) {
-        return;
-      }
+      if (!confirmClear) return;
       onClearCandidates();
     }
-    
     onParticipantsChange(participants.filter(p => p.id !== id));
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleAddParticipant();
-    }
+    if (e.key === 'Enter') handleAddParticipant();
   };
 
   return (
@@ -121,37 +142,87 @@ export default function ParticipantManager({
 
           <div>
             <label className="text-sm font-semibold mb-2 flex items-center gap-2 text-foreground">
-              📍 출발지
+              📍 출발지 선택
             </label>
-            <AddressSearch
-              onSelect={(address: string, coords: { lat: number; lng: number }) => {
-                console.log('[ParticipantManager] AddressSearch onSelect 호출:', { address, coords });
-                setStartLocation(address);
-                setCoordinates(coords);
-              }}
-              placeholder="예: 강남역, 홍대입구역"
-            />
-            {/* 좌표 표시 */}
-            {coordinates && (
-              <div className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1 animate-pulse font-medium">
-                ✓ 좌표: {coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}
-              </div>
-            )}
+            
+            {/* 탭 버튼 */}
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => {
+                  setStartLocationTab('search');
+                  setStartLocation('');
+                  setCoordinates(undefined);
+                }}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
+                  startLocationTab === 'search'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted hover:bg-muted/80 text-foreground'
+                }`}
+              >
+                <MapPin className="h-4 w-4 inline mr-2" />
+                직접 검색
+              </button>
+              <button
+                onClick={() => {
+                  setStartLocationTab('subway');
+                  setStartLocation('');
+                  setCoordinates(undefined);
+                }}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
+                  startLocationTab === 'subway'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted hover:bg-muted/80 text-foreground'
+                }`}
+              >
+                🚇 지하철역
+              </button>
+            </div>
+
+            {/* 탭 컨텐츠 */}
+            <div className="mt-3">
+              {/* 직접 검색 탭 */}
+              {startLocationTab === 'search' && (
+                <AddressSearch
+                  onSelect={(address: string, coords: { lat: number; lng: number }) => {
+                    setStartLocation(address);
+                    setCoordinates(coords);
+                  }}
+                  onConfirm={handleAddParticipant}
+                  buttonLabel="참여자 추가"
+                  placeholder="예: 강남역, 홍대입구역"
+                />
+              )}
+
+              {/* 지하철역 탭 */}
+              {startLocationTab === 'subway' && (
+                <SubwayStationPicker
+                  onSelect={(stationId) => {
+                    const station = subwayStations.find(s => s.id === stationId);
+                    if (station) {
+                      setStartLocation(`${station.name}역`);
+                      setCoordinates(station.coordinates);
+                    }
+                  }}
+                  actionButton={
+                    name.trim()
+                      ? {
+                          label: '참여자 추가',
+                          onClick: (stationId) => handleAddParticipantWithSubway(stationId),
+                        }
+                      : undefined
+                  }
+                  showPreviewHint
+                  compact={false}
+                />
+              )}
+            </div>
           </div>
 
-          {/* 이동수단 안내 (선택 제거, 대중교통 고정) */}
+          {/* 이동수단 안내 */}
           <div className="text-xs text-foreground flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20">
             <Bus className="h-4 w-4 text-primary" />
             <span className="font-medium">이동수단: 대중교통 (지하철/버스)</span>
           </div>
-
-          <Button 
-            onClick={handleAddParticipant} 
-            className="w-full font-semibold py-5"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            참여자 추가
-          </Button>
         </div>
 
         {/* 참여자 목록 */}
@@ -207,4 +278,3 @@ export default function ParticipantManager({
     </Card>
   );
 }
-
