@@ -31,7 +31,19 @@ export default function ParticipantAnalysis({ participants, candidates }: Partic
     return participants.map(participant => {
       // 이 참여자의 모든 후보지 소요시간 수집
       const locations = candidates.map(candidate => {
-        const travelTime = candidate.travelTimes.find(tt => tt.participantId === participant.id);
+        // participantId로 먼저 찾고, 없으면 이름으로 찾기
+        let travelTime = candidate.travelTimes.find(tt => tt.participantId === participant.id);
+        
+        // ID 매칭 실패 시 이름으로 재시도
+        if (!travelTime) {
+          travelTime = candidate.travelTimes.find(tt => tt.participantName === participant.name);
+        }
+        
+        // 그래도 없으면 첫 번째 데이터라도 사용 (임시 - 디버깅용)
+        if (!travelTime && candidate.travelTimes.length > 0) {
+          console.warn(`⚠️ ${participant.name}의 이동시간 매칭 실패, 후보지: ${candidate.name}`);
+        }
+        
         return {
           locationId: candidate.id,
           locationName: candidate.name,
@@ -41,8 +53,8 @@ export default function ParticipantAnalysis({ participants, candidates }: Partic
         };
       }).sort((a, b) => a.duration - b.duration); // 시간 짧은 순으로 정렬
 
-      const bestLocation = locations[0];
-      const worstLocation = locations[locations.length - 1];
+      const bestLocation = locations[0] || { duration: 0, distance: 0, locationName: '', locationAddress: '', locationId: '' };
+      const worstLocation = locations[locations.length - 1] || { duration: 0, distance: 0, locationName: '', locationAddress: '', locationId: '' };
 
       return {
         participant,

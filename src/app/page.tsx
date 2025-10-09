@@ -68,13 +68,21 @@ export default function Home() {
       const response = await fetch(`/api/rooms?roomCode=${roomCode}`);
       const data = await response.json();
 
+      console.log('📦 방 데이터 로드:', data); // 디버깅 로그
+
       if (data.success) {
         setMeetingTitle(data.data.meetingTitle || '새로운 모임');
         setParticipants(data.data.participants || []);
         setCandidates(data.data.candidates || []);
+        
+        console.log('✅ 참여자:', data.data.participants?.length || 0);
+        console.log('✅ 후보지:', data.data.candidates?.length || 0);
+        console.log('✅ 후보지 상세:', data.data.candidates);
+      } else {
+        console.error('❌ 방 데이터 로드 실패:', data.error);
       }
     } catch (error) {
-      console.error('방 데이터 로드 실패:', error);
+      console.error('❌ 방 데이터 로드 에러:', error);
     }
   };
 
