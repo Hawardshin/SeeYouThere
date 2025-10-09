@@ -35,6 +35,7 @@ export default function LocationManager({
   const [isCalculating, setIsCalculating] = useState(false);
   const [showPopularLocations, setShowPopularLocations] = useState(false);
   const [previewPopularLocation, setPreviewPopularLocation] = useState<string | null>(null); // 미리보기 중인 인기 장소
+  const [mobilePopularView, setMobilePopularView] = useState<'list' | 'map'>('list'); // 모바일 탭 전환
   const [sortBy, setSortBy] = useState<'time' | 'maxTime' | 'totalTime'>('maxTime'); // 정렬 기준
 
   // 후보지 추가 로직 (일반 검색용과 인기 장소용 공통 사용)
@@ -273,108 +274,149 @@ export default function LocationManager({
             </button>
 
             {showPopularLocations && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3 border-2 border-primary/20 rounded-lg p-4 bg-muted/30">
-                {/* 좌측: 인기 장소 버튼 리스트 */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-foreground mb-2">
-                    서울 주요 지하철역 ({popularLocations.length}개)
-                  </h4>
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                    {popularLocations.map((location, index) => {
-                      const isAlreadyAdded = candidates.some(c => c.name === location.name);
-                      const isPreviewing = previewPopularLocation === location.id;
-                      
-                      return (
-                        <div key={location.id} className="space-y-0">
-                          {/* 장소 정보 카드 */}
-                          <button
-                            onClick={() => setPreviewPopularLocation(isPreviewing ? null : location.id)}
-                            disabled={isAlreadyAdded}
-                            className={`w-full px-4 py-3 text-left transition-all duration-150 border rounded-lg flex items-start gap-3 ${
-                              isPreviewing
-                                ? 'border-primary bg-primary/10 shadow-md'
-                                : isAlreadyAdded
-                                ? 'border-border bg-muted/50 opacity-50 cursor-not-allowed'
-                                : 'border-border hover:border-primary/50 hover:bg-accent/30'
-                            }`}
-                          >
-                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0 mt-0.5">
-                              {index + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-sm truncate text-foreground">
-                                {location.name}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate mt-1">
-                                {location.address}
-                              </div>
-                            </div>
-                            {isAlreadyAdded ? (
-                              <Badge variant="secondary" className="shrink-0 text-xs">
-                                추가됨 ✓
-                              </Badge>
-                            ) : (
-                              <MapPin className={`h-5 w-5 shrink-0 mt-0.5 ${
-                                isPreviewing ? 'text-primary' : 'text-muted-foreground'
-                              }`} />
-                            )}
-                          </button>
-
-                          {/* 선택된 장소의 추가 버튼 */}
-                          {isPreviewing && !isAlreadyAdded && (
-                            <div className="px-4 pb-3 pt-2 animate-in slide-in-from-top-2 duration-200">
-                              <button
-                                onClick={() => handleAddPopularLocation(location.id)}
-                                disabled={isCalculating || participants.length === 0}
-                                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {isCalculating ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    계산 중...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus className="h-4 w-4" />
-                                    이 장소를 후보지로 추가
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+              <div className="mt-3 border-2 border-primary/20 rounded-lg p-4 bg-muted/30">
+                {/* 모바일 탭 버튼 */}
+                <div className="lg:hidden flex gap-2 mb-4 p-1 bg-muted rounded-lg">
+                  <button
+                    onClick={() => setMobilePopularView('list')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                      mobilePopularView === 'list'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    📋 목록 (16)
+                  </button>
+                  <button
+                    onClick={() => setMobilePopularView('map')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                      mobilePopularView === 'map'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    🗺️ 지도
+                  </button>
                 </div>
 
-                {/* 우측: 지도 미리보기 */}
-                <div className="lg:sticky lg:top-4 h-[500px]">
-                  <MapView
-                    locations={
-                      previewPopularLocation
-                        ? popularLocations
-                            .filter(loc => loc.id === previewPopularLocation)
-                            .map(loc => ({
-                              lat: loc.coordinates.lat,
-                              lng: loc.coordinates.lng,
-                              name: loc.name,
-                              address: loc.address,
-                              isSelected: true,
-                            }))
-                        : popularLocations.map(loc => ({
-                            lat: loc.coordinates.lat,
-                            lng: loc.coordinates.lng,
-                            name: loc.name,
-                            address: loc.address,
-                            isSelected: false,
-                          }))
-                    }
-                    className="h-full rounded-lg border-2 border-primary/30"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2 text-center">
-                    💡 장소를 클릭하면 지도에서 위치를 확인할 수 있습니다
-                  </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* 좌측: 인기 장소 버튼 리스트 */}
+                  <div className={`space-y-2 ${mobilePopularView === 'map' ? 'hidden lg:block' : ''}`}>
+                    <h4 className="text-xs font-semibold text-foreground mb-2">
+                      서울 주요 지하철역 ({popularLocations.length}개)
+                    </h4>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                      {popularLocations.map((location, index) => {
+                        const isAlreadyAdded = candidates.some(c => c.name === location.name);
+                        const isPreviewing = previewPopularLocation === location.id;
+                        
+                        return (
+                          <div key={location.id} className="space-y-0">
+                            {/* 장소 정보 카드 */}
+                            <button
+                              onClick={() => {
+                                setPreviewPopularLocation(isPreviewing ? null : location.id);
+                                if (!isPreviewing) setMobilePopularView('map'); // 선택 시 지도로 전환
+                              }}
+                              disabled={isAlreadyAdded}
+                              className={`w-full px-4 py-3 text-left transition-all duration-150 border rounded-lg flex items-start gap-3 ${
+                                isPreviewing
+                                  ? 'border-primary bg-primary/10 shadow-md'
+                                  : isAlreadyAdded
+                                  ? 'border-border bg-muted/50 opacity-50 cursor-not-allowed'
+                                  : 'border-border hover:border-primary/50 hover:bg-accent/30'
+                              }`}
+                            >
+                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0 mt-0.5">
+                                {index + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm truncate text-foreground">
+                                  {location.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate mt-1">
+                                  {location.address}
+                                </div>
+                              </div>
+                              {isAlreadyAdded ? (
+                                <Badge variant="secondary" className="shrink-0 text-xs">
+                                  추가됨 ✓
+                                </Badge>
+                              ) : (
+                                <MapPin className={`h-5 w-5 shrink-0 mt-0.5 ${
+                                  isPreviewing ? 'text-primary' : 'text-muted-foreground'
+                                }`} />
+                              )}
+                            </button>
+
+                            {/* 선택된 장소의 추가 버튼 */}
+                            {isPreviewing && !isAlreadyAdded && (
+                              <div className="px-4 pb-3 pt-2 animate-in slide-in-from-top-2 duration-200">
+                                <button
+                                  onClick={() => handleAddPopularLocation(location.id)}
+                                  disabled={isCalculating || participants.length === 0}
+                                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isCalculating ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      계산 중...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Plus className="h-4 w-4" />
+                                      이 장소를 후보지로 추가
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 우측: 지도 미리보기 */}
+                  <div className={`lg:sticky lg:top-4 ${mobilePopularView === 'list' ? 'hidden lg:block' : ''}`}>
+                    <div className="h-[500px]">
+                      <MapView
+                        locations={
+                          previewPopularLocation
+                            ? popularLocations
+                                .filter(loc => loc.id === previewPopularLocation)
+                                .map(loc => ({
+                                  lat: loc.coordinates.lat,
+                                  lng: loc.coordinates.lng,
+                                  name: loc.name,
+                                  address: loc.address,
+                                  isSelected: true,
+                                }))
+                            : popularLocations.map(loc => ({
+                                lat: loc.coordinates.lat,
+                                lng: loc.coordinates.lng,
+                                name: loc.name,
+                                address: loc.address,
+                                isSelected: false,
+                              }))
+                        }
+                        className="h-full rounded-lg border-2 border-primary/30"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      💡 장소를 클릭하면 지도에서 위치를 확인할 수 있습니다
+                    </p>
+                    
+                    {/* 모바일: 목록으로 돌아가기 버튼 */}
+                    {previewPopularLocation && (
+                      <button
+                        onClick={() => setMobilePopularView('list')}
+                        className="lg:hidden w-full mt-3 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 font-medium text-sm transition-all"
+                      >
+                        ← 목록으로 돌아가기
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
