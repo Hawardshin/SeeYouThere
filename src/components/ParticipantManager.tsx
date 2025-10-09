@@ -28,10 +28,36 @@ export default function ParticipantManager({
   const [name, setName] = useState('');
   const [startLocation, setStartLocation] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
-  const transportMode = 'transit' as const;
+  const [transportMode, setTransportMode] = useState<'car' | 'transit'>('transit');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
   
   // 출발지 선택 방법 탭
   const [startLocationTab, setStartLocationTab] = useState<'search' | 'subway'>('search');
+
+  // 새로고침 처리 (5초 제한)
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTime;
+    
+    if (timeSinceLastRefresh < 5000) {
+      const remainingSeconds = Math.ceil((5000 - timeSinceLastRefresh) / 1000);
+      alert(`⏱️ ${remainingSeconds}초 후에 다시 시도해주세요.`);
+      return;
+    }
+    
+    setIsRefreshing(true);
+    setLastRefreshTime(now);
+    
+    try {
+      await onRefresh();
+      setTimeout(() => setIsRefreshing(false), 800);
+    } catch {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleAddParticipant = () => {
     if (!name.trim() || !startLocation.trim()) {
@@ -100,12 +126,31 @@ export default function ParticipantManager({
   const handleRemoveParticipant = (id: string) => {
     if (candidatesCount > 0 && onClearCandidates) {
       const confirmClear = window.confirm(
-        `⚠️ 인원 삭제 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
+        `⚠️ 인원 제거 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
       );
       if (!confirmClear) return;
       onClearCandidates();
     }
+    
     onParticipantsChange(participants.filter(p => p.id !== id));
+  };
+
+  const handleToggleTransportMode = (id: string) => {
+    if (candidatesCount > 0 && onClearCandidates) {
+      const confirmClear = window.confirm(
+        `⚠️ 이동수단 변경 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
+      );
+      if (!confirmClear) return;
+      onClearCandidates();
+    }
+
+    onParticipantsChange(
+      participants.map(p => 
+        p.id === id 
+          ? { ...p, transportMode: p.transportMode === 'transit' ? 'car' as const : 'transit' as const }
+          : p
+      )
+    );
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -126,11 +171,15 @@ export default function ParticipantManager({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onRefresh}
-              className="hover:bg-muted"
-              title="참여자 목록 새로고침"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="hover:bg-muted relative"
+              title="참여자 목록 새로고침 (5초마다 가능)"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 transition-transform ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+              {isRefreshing && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping" />
+              )}
             </Button>
           )}
         </CardTitle>
@@ -229,10 +278,36 @@ export default function ParticipantManager({
             </div>
           </div>
 
-          {/* 이동수단 안내 */}
-          <div className="text-xs text-foreground flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20">
-            <Bus className="h-4 w-4 text-primary" />
-            <span className="font-medium">이동수단: 대중교통 (지하철/버스)</span>
+          {/* 이동수단 선택 */}
+          <div>
+            <label className="text-sm font-semibold mb-2 flex items-center gap-2 text-foreground">
+              🚗 이동수단
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTransportMode('transit')}
+                className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all border-2 ${
+                  transportMode === 'transit'
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-muted hover:bg-muted/80 text-foreground border-border'
+                }`}
+              >
+                <Bus className="h-4 w-4 inline mr-2" />
+                대중교통
+              </button>
+              <button
+                type="button"
+                onClick={() => setTransportMode('car')}
+                className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all border-2 ${
+                  transportMode === 'car'
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-muted hover:bg-muted/80 text-foreground border-border'
+                }`}
+              >
+                🚗 자동차
+              </button>
+            </div>
           </div>
         </div>
 
@@ -261,10 +336,24 @@ export default function ParticipantManager({
                         <Badge variant="default" className="font-semibold">
                           {participant.name}
                         </Badge>
-                        <Badge variant="outline" className="border-primary/50 text-primary bg-primary/5">
-                          <Bus className="h-3 w-3 mr-1" />
-                          대중교통
-                        </Badge>
+                        <button
+                          onClick={() => handleToggleTransportMode(participant.id)}
+                          title="클릭하여 이동수단 변경"
+                          className={`px-2 py-1 text-xs font-medium rounded-md border transition-all hover:scale-105 ${
+                            participant.transportMode === 'car' 
+                              ? 'border-blue-500/50 text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900' 
+                              : 'border-primary/50 text-primary bg-primary/5 hover:bg-primary/10'
+                          }`}
+                        >
+                          {participant.transportMode === 'car' ? (
+                            <>🚗 자동차</>
+                          ) : (
+                            <>
+                              <Bus className="h-3 w-3 inline mr-1" />
+                              대중교통
+                            </>
+                          )}
+                        </button>
                       </div>
                       <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
                         <MapPin className="h-3 w-3 flex-shrink-0" />

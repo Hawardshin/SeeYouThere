@@ -39,6 +39,7 @@ export default function LocationManager({
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
   const [isCalculating, setIsCalculating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
   
   // 목표지 선택 방법 탭
   const [locationTab, setLocationTab] = useState<'popular' | 'subway' | 'search'>('popular');
@@ -46,13 +47,25 @@ export default function LocationManager({
   const [sortBy, setSortBy] = useState<'time' | 'maxTime' | 'totalTime'>('maxTime');
   const popularScrollRef = useRef<HTMLDivElement>(null);
 
-  // 새로고침 처리
+  // 새로고침 처리 (5초 제한)
   const handleRefresh = async () => {
     if (!onRefresh) return;
+    
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTime;
+    
+    if (timeSinceLastRefresh < 5000) {
+      const remainingSeconds = Math.ceil((5000 - timeSinceLastRefresh) / 1000);
+      alert(`⏱️ ${remainingSeconds}초 후에 다시 시도해주세요.`);
+      return;
+    }
+    
     setIsRefreshing(true);
+    setLastRefreshTime(now);
+    
     try {
       await onRefresh();
-      setTimeout(() => setIsRefreshing(false), 500);
+      setTimeout(() => setIsRefreshing(false), 800);
     } catch {
       setIsRefreshing(false);
     }
@@ -188,9 +201,9 @@ export default function LocationManager({
                 onClick={handleRefresh}
                 disabled={isRefreshing}
                 className="hover:bg-muted relative"
-                title="장소 목록 새로고침"
+                title="장소 목록 새로고침 (5초마다 가능)"
               >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+                <RefreshCw className={`h-4 w-4 transition-transform ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
                 {isRefreshing && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping" />
                 )}
@@ -464,23 +477,37 @@ export default function LocationManager({
                     <div className="space-y-2">
                       {[...candidate.travelTimes]
                         .sort((a, b) => a.duration - b.duration)
-                        .map((time) => (
-                        <div
-                          key={time.participantId}
-                          className="flex items-center justify-between text-sm p-2 bg-white dark:bg-gray-800 rounded"
-                        >
-                          <span className="font-medium">{time.participantName}</span>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">
-                              <Clock className="w-3 h-3 mr-1" />
-                              {time.duration}분
-                            </Badge>
-                            <span className="text-gray-500 dark:text-gray-400">
-                              {time.distance ? (time.distance / 1000).toFixed(1) : '?'}km
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        .map((time) => {
+                          const participant = participants.find(p => p.id === time.participantId);
+                          return (
+                            <div
+                              key={time.participantId}
+                              className="flex items-center justify-between text-sm p-2 bg-white dark:bg-gray-800 rounded"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{time.participantName}</span>
+                                {participant && (
+                                  <Badge variant="outline" className={`text-xs ${
+                                    participant.transportMode === 'car' 
+                                      ? 'border-blue-500/50 text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400' 
+                                      : 'border-green-500/50 text-green-600 bg-green-50 dark:bg-green-950 dark:text-green-400'
+                                  }`}>
+                                    {participant.transportMode === 'car' ? '차량' : '대중교통'}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {time.duration}분
+                                </Badge>
+                                <span className="text-gray-500 dark:text-gray-400">
+                                  {time.distance ? (time.distance / 1000).toFixed(1) : '?'}km
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
                   </CardContent>
                 </Card>
