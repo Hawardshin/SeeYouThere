@@ -9,6 +9,7 @@ import { MapPin, Plus, Clock, Trash2, Loader2, Star } from 'lucide-react';
 import { getTravelTime } from '@/lib/mapApi';
 import AddressSearch from './AddressSearch';
 import { popularLocations } from '@/data/popularLocations';
+import MapView from './MapView';
 
 interface LocationManagerProps {
   participants: Participant[];
@@ -437,6 +438,25 @@ export default function LocationManager({
             )}
           </div>
         </div>
+
+        {/* 지도 뷰 - 후보지가 있을 때만 표시 */}
+        {candidates.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+              🗺️ 지도에서 확인
+            </h3>
+            <MapView
+              locations={candidates.map((candidate) => ({
+                lat: candidate.coordinates.lat,
+                lng: candidate.coordinates.lng,
+                name: candidate.name,
+                address: candidate.address,
+                isSelected: selectedLocationId === candidate.id,
+              }))}
+              className="h-[400px]"
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
