@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { CandidateLocation, LocationStats } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, TrendingUp, BarChart3, Award } from 'lucide-react';
+import { Trophy, TrendingUp, BarChart3, Award, ChevronDown, ChevronUp, User } from 'lucide-react';
 
 interface ResultsDisplayProps {
   candidates: CandidateLocation[];
@@ -12,6 +12,20 @@ interface ResultsDisplayProps {
 }
 
 export default function ResultsDisplay({ candidates, selectedLocationId }: ResultsDisplayProps) {
+  // 각 장소의 펼침/접힌 상태 관리
+  const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
+
+  // 장소 토글 함수
+  const toggleLocation = (locationId: string) => {
+    const newExpanded = new Set(expandedLocations);
+    if (newExpanded.has(locationId)) {
+      newExpanded.delete(locationId);
+    } else {
+      newExpanded.add(locationId);
+    }
+    setExpandedLocations(newExpanded);
+  };
+
   const stats = useMemo(() => {
     return candidates.map((candidate): LocationStats => {
       const times = candidate.travelTimes.map(tt => tt.duration);
@@ -224,7 +238,7 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
             전체 후보지 비교
           </CardTitle>
           <CardDescription>
-            클릭하여 각 장소의 상세 정보를 확인하세요
+            클릭하여 각 장소의 참여자별 소요시간을 확인하세요 (시간 순 정렬)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -233,22 +247,33 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
               const isFairest = fairestLocation?.locationId === stat.locationId;
               const isFastest = fastestLocation?.locationId === stat.locationId;
               const isSelected = selectedLocationId === stat.locationId;
+              const isExpanded = expandedLocations.has(stat.locationId);
+              
+              // 해당 장소의 참여자별 소요시간 (시간 순 정렬)
+              const candidate = candidates.find(c => c.id === stat.locationId);
+              const sortedTravelTimes = candidate?.travelTimes 
+                ? [...candidate.travelTimes].sort((a, b) => a.duration - b.duration)
+                : [];
 
               return (
                 <div
                   key={stat.locationId}
-                  className={`p-4 rounded-lg border-2 transition-all ${
+                  className={`rounded-lg border-2 transition-all overflow-hidden ${
                     isSelected
                       ? 'border-primary bg-primary/5'
-                      : 'border-border bg-card hover:border-primary/50'
+                      : 'border-border bg-card'
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-foreground">
-                        {stat.locationName}
-                      </h4>
-                      <div className="flex gap-2 mt-1">
+                  {/* 장소 정보 헤더 - 클릭 가능 */}
+                  <button
+                    onClick={() => toggleLocation(stat.locationId)}
+                    className="w-full flex items-start justify-between p-4 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-foreground text-lg">
+                          {stat.locationName}
+                        </h4>
                         {isFairest && (
                           <Badge className="bg-green-600 text-white text-xs">
                             <Trophy className="h-3 w-3 mr-1" />
@@ -262,27 +287,99 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
                           </Badge>
                         )}
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                    <div className="bg-muted/50 p-2 rounded">
-                      <p className="text-xs text-muted-foreground">총 시간</p>
-                      <p className="font-semibold text-foreground">{stat.totalTime}분</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                        <div className="bg-muted/50 p-2 rounded">
+                          <p className="text-xs text-muted-foreground">총 시간</p>
+                          <p className="font-semibold text-foreground">{stat.totalTime}분</p>
+                        </div>
+                        <div className="bg-muted/50 p-2 rounded">
+                          <p className="text-xs text-muted-foreground">평균</p>
+                          <p className="font-semibold text-foreground">{Math.round(stat.avgTime)}분</p>
+                        </div>
+                        <div className="bg-muted/50 p-2 rounded">
+                          <p className="text-xs text-muted-foreground">최대</p>
+                          <p className="font-semibold text-foreground">{stat.maxTime}분</p>
+                        </div>
+                        <div className="bg-muted/50 p-2 rounded">
+                          <p className="text-xs text-muted-foreground">공평도</p>
+                          <p className="font-semibold text-foreground">{stat.fairnessScore.toFixed(1)}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-muted/50 p-2 rounded">
-                      <p className="text-xs text-muted-foreground">평균</p>
-                      <p className="font-semibold text-foreground">{Math.round(stat.avgTime)}분</p>
+
+                    <div className="ml-4 shrink-0">
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      )}
                     </div>
-                    <div className="bg-muted/50 p-2 rounded">
-                      <p className="text-xs text-muted-foreground">최대</p>
-                      <p className="font-semibold text-foreground">{stat.maxTime}분</p>
+                  </button>
+
+                  {/* 펼쳐진 경우에만 참여자별 소요시간 표시 */}
+                  {isExpanded && (
+                    <div className="p-4 pt-0 space-y-2 border-t">
+                      <p className="text-sm font-medium text-muted-foreground mb-3">
+                        참여자별 소요시간 (시간 순)
+                      </p>
+                      {sortedTravelTimes.map((travelTime, index) => {
+                        const isFirst = index === 0;
+                        const isLast = index === sortedTravelTimes.length - 1;
+                        
+                        return (
+                          <div
+                            key={travelTime.participantId}
+                            className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                              isFirst 
+                                ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/30' 
+                                : isLast 
+                                ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/30'
+                                : 'border-border bg-muted/30'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <Badge 
+                                variant={isFirst ? 'default' : isLast ? 'destructive' : 'secondary'}
+                                className="shrink-0 w-8 text-center"
+                              >
+                                {index + 1}
+                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium text-foreground">
+                                  {travelTime.participantName}
+                                </span>
+                                {isFirst && (
+                                  <Badge variant="outline" className="text-xs bg-green-600 text-white border-green-600">
+                                    최단
+                                  </Badge>
+                                )}
+                                {isLast && (
+                                  <Badge variant="outline" className="text-xs bg-red-600 text-white border-red-600">
+                                    최장
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0 ml-3">
+                              <div className={`text-lg font-bold ${
+                                isFirst ? 'text-green-600 dark:text-green-400' : 
+                                isLast ? 'text-red-600 dark:text-red-400' : 
+                                'text-foreground'
+                              }`}>
+                                {travelTime.duration}분
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {((travelTime.distance || 0) / 1000).toFixed(1)}km
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="bg-muted/50 p-2 rounded">
-                      <p className="text-xs text-muted-foreground">공평도</p>
-                      <p className="font-semibold text-foreground">{stat.fairnessScore.toFixed(1)}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               );
             })}

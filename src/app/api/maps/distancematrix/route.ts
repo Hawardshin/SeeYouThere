@@ -98,10 +98,16 @@ export async function POST(request: NextRequest) {
     // 출발 시간 설정 (대중교통 모드)
     let departureTimeFormatted;
     if (mode === 'TRANSIT') {
-      if (departureTime) {
+      if (departureTime && departureTime.trim() !== '') {
         // Unix timestamp를 RFC3339 UTC format으로 변환
-        const date = new Date(parseInt(departureTime) * 1000);
-        departureTimeFormatted = date.toISOString();
+        const timestamp = parseInt(departureTime);
+        if (!isNaN(timestamp) && timestamp > 0) {
+          const date = new Date(timestamp * 1000);
+          departureTimeFormatted = date.toISOString();
+        } else {
+          // 현재 시간 사용
+          departureTimeFormatted = new Date().toISOString();
+        }
       } else {
         // 현재 시간
         departureTimeFormatted = new Date().toISOString();

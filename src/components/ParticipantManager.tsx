@@ -196,21 +196,18 @@ export default function ParticipantManager({
               {/* 지하철역 탭 */}
               {startLocationTab === 'subway' && (
                 <SubwayStationPicker
-                  onSelect={(stationId) => {
+                  onSelect={(stationId: string) => {
                     const station = subwayStations.find(s => s.id === stationId);
                     if (station) {
                       setStartLocation(`${station.name}역`);
                       setCoordinates(station.coordinates);
                     }
                   }}
-                  actionButton={
-                    name.trim()
-                      ? {
-                          label: '참여자 추가',
-                          onClick: (stationId) => handleAddParticipantWithSubway(stationId),
-                        }
-                      : undefined
-                  }
+                  actionButton={{
+                    label: '참여자 추가',
+                    onClick: (stationId: string) => handleAddParticipantWithSubway(stationId),
+                    disabled: !name.trim(),
+                  }}
                   showPreviewHint
                   compact={false}
                 />

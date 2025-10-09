@@ -430,7 +430,9 @@ export default function LocationManager({
                     </div>
 
                     <div className="space-y-2">
-                      {candidate.travelTimes.map((time) => (
+                      {[...candidate.travelTimes]
+                        .sort((a, b) => a.duration - b.duration)
+                        .map((time) => (
                         <div
                           key={time.participantId}
                           className="flex items-center justify-between text-sm p-2 bg-white dark:bg-gray-800 rounded"

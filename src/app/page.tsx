@@ -19,16 +19,8 @@ export default function Home() {
   const [candidates, setCandidates] = useState<CandidateLocation[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   
-  // 출발 시간 설정 (기본값: 오늘 오후 1시)
-  const getDefaultDepartureTime = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}T13:00`;
-  };
-  
-  const [departureTime, setDepartureTime] = useState(getDefaultDepartureTime());
+  // 출발 시간 설정 (기본값: 빈 문자열, useEffect에서 설정)
+  const [departureTime, setDepartureTime] = useState('');
   
   // 방 관련 상태
   const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null);
@@ -40,6 +32,17 @@ export default function Home() {
   
   // 결과 페이지 뷰 모드 (overview: 전체 분석, individual: 개인별 분석)
   const [resultView, setResultView] = useState<'overview' | 'individual'>('overview');
+
+  // 클라이언트에서만 기본 출발 시간 설정 (hydration 불일치 방지)
+  useEffect(() => {
+    if (!departureTime) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      setDepartureTime(`${year}-${month}-${day}T13:00`);
+    }
+  }, [departureTime]);
 
   // 방 데이터 로드
   const loadRoomData = async (roomCode: string) => {
