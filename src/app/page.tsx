@@ -8,10 +8,10 @@ import LocationManager from '@/components/LocationManager';
 import ResultsDisplay from '@/components/ResultsDisplay';
 import ParticipantAnalysis from '@/components/ParticipantAnalysis';
 import ShareDialog from '@/components/ShareDialog';
-import RoomEntranceDialog from '@/components/RoomEntranceDialog';
+import RoomListDialog from '@/components/RoomListDialog';
 import ThemeToggle from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List } from 'lucide-react';
 
 export default function Home() {
   const [meetingTitle, setMeetingTitle] = useState('새로운 모임');
@@ -24,8 +24,7 @@ export default function Home() {
   
   // 방 관련 상태
   const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null);
-  // 방 입장 전까지 다이얼로그 강제 표시
-  const [showRoomDialog, setShowRoomDialog] = useState(true);
+  const [showRoomDialog, setShowRoomDialog] = useState(false);
   
   // 🎯 스텝 관리 (1: 참여자, 2: 장소, 3: 결과)
   const [currentStep, setCurrentStep] = useState(1);
@@ -44,6 +43,25 @@ export default function Home() {
     }
   }, [departureTime]);
 
+  // 로컬스토리지에서 현재 방 복구
+  useEffect(() => {
+    const savedRoomCode = localStorage.getItem('currentRoomCode');
+    if (savedRoomCode) {
+      setCurrentRoomCode(savedRoomCode);
+      loadRoomData(savedRoomCode);
+    } else {
+      // 저장된 방이 없으면 방 목록 다이얼로그 표시
+      setShowRoomDialog(true);
+    }
+  }, []);
+
+  // 현재 방 코드가 변경되면 로컬스토리지에 저장
+  useEffect(() => {
+    if (currentRoomCode) {
+      localStorage.setItem('currentRoomCode', currentRoomCode);
+    }
+  }, [currentRoomCode]);
+
   // 방 데이터 로드
   const loadRoomData = async (roomCode: string) => {
     try {
@@ -60,12 +78,80 @@ export default function Home() {
     }
   };
 
-  // 방 입장 처리
-  const handleRoomEnter = async (roomCode: string, isNew: boolean) => {
-    setCurrentRoomCode(roomCode);
-    setShowRoomDialog(false); // 방 입장 성공 시에만 닫기
-    if (!isNew) {
-      await loadRoomData(roomCode);
+  // 방 새로고침
+  const handleRefreshRoom = async () => {
+    if (currentRoomCode) {
+      await loadRoomData(currentRoomCode);
+    }
+  };
+
+  // 방 생성
+  const handleRoomCreate = async (roomCode: string, createdBy: string, password?: string) => {
+    try {
+      const response = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomCode,
+          meetingTitle: '새로운 모임',
+          createdBy,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCurrentRoomCode(roomCode);
+        setMeetingTitle(data.data.meetingTitle);
+        setParticipants([]);
+        setCandidates([]);
+        return true;
+      } else {
+        alert(data.error === 'Room already exists' ? '이미 존재하는 방 코드입니다.' : '방 생성에 실패했습니다.');
+        return false;
+      }
+    } catch (error) {
+      console.error('방 생성 오류:', error);
+      alert('방 생성 중 오류가 발생했습니다.');
+      return false;
+    }
+  };
+
+  // 방 입장
+  const handleRoomEnter = async (roomCode: string, password?: string) => {
+    try {
+      if (password !== undefined) {
+        // 비밀번호 확인
+        const response = await fetch('/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomCode,
+            verifyPassword: password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setCurrentRoomCode(roomCode);
+          setMeetingTitle(data.data.meetingTitle);
+          setParticipants(data.data.participants || []);
+          setCandidates(data.data.candidates || []);
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        // 비밀번호 없는 방
+        await loadRoomData(roomCode);
+        setCurrentRoomCode(roomCode);
+        return true;
+      }
+    } catch (error) {
+      console.error('방 입장 오류:', error);
+      return false;
     }
   };
 
@@ -111,17 +197,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen pb-20">
-      {/* 방 입장 다이얼로그 */}
-      <RoomEntranceDialog
-        open={showRoomDialog && !currentRoomCode}
-        onOpenChange={(open) => {
-          // 방 코드가 있을 때만 다이얼로그를 닫을 수 있음
-          if (!open && !currentRoomCode) {
-            return; // 방 입장 전에는 닫기 방지
-          }
-          setShowRoomDialog(open);
-        }}
+      {/* 방 목록 다이얼로그 */}
+      <RoomListDialog
+        open={showRoomDialog}
+        onOpenChange={setShowRoomDialog}
         onRoomEnter={handleRoomEnter}
+        onRoomCreate={handleRoomCreate}
+        currentRoomCode={currentRoomCode}
       />
 
       <div className="max-w-4xl mx-auto px-4 py-6 md:py-8">
@@ -131,6 +213,18 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8 md:mb-12 relative"
         >
+          {/* 방 목록 버튼 - 좌측 상단 */}
+          <div className="absolute top-0 left-0">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowRoomDialog(true)}
+              className="hover:bg-primary/10"
+            >
+              <List className="h-5 w-5" />
+            </Button>
+          </div>
+
           {/* 테마 토글 버튼 - 우측 상단 */}
           <div className="absolute top-0 right-0">
             <ThemeToggle />
@@ -217,6 +311,7 @@ export default function Home() {
                   setCandidates([]);
                   setSelectedLocationId(null);
                 }}
+                onRefresh={handleRefreshRoom}
               />
             </motion.div>
           )}
@@ -237,6 +332,7 @@ export default function Home() {
                 onLocationSelect={setSelectedLocationId}
                 departureTime={departureTime}
                 onDepartureTimeChange={setDepartureTime}
+                onRefresh={handleRefreshRoom}
               />
             </motion.div>
           )}

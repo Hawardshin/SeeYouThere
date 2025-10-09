@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { MapPin, Plus, Clock, Trash2, Loader2, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Plus, Clock, Trash2, Loader2, Star, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { getTravelTime } from '@/lib/mapApi';
 import AddressSearch from './AddressSearch';
 import SubwayStationPicker from './SubwayStationPicker';
@@ -22,6 +22,7 @@ interface LocationManagerProps {
   onLocationSelect: (id: string | null) => void;
   departureTime: string;
   onDepartureTimeChange: (time: string) => void;
+  onRefresh?: () => void;
 }
 
 export default function LocationManager({
@@ -32,6 +33,7 @@ export default function LocationManager({
   onLocationSelect,
   departureTime,
   onDepartureTimeChange,
+  onRefresh,
 }: LocationManagerProps) {
   const [locationAddress, setLocationAddress] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
@@ -161,9 +163,22 @@ export default function LocationManager({
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            장소 선택
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              장소 선택
+            </div>
+            {onRefresh && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onRefresh}
+                className="hover:bg-muted"
+                title="장소 목록 새로고침"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            )}
           </CardTitle>
           <CardDescription>
             만날 장소를 추가하고 각 참여자의 이동 시간을 계산합니다

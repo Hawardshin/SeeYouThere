@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Trash2, Users, Bus, MapPin } from 'lucide-react';
+import { Trash2, Users, Bus, MapPin, RefreshCw } from 'lucide-react';
 import AddressSearch from './AddressSearch';
 import SubwayStationPicker from './SubwayStationPicker';
 import { subwayStations } from '@/data/subwayStations';
@@ -16,6 +16,7 @@ interface ParticipantManagerProps {
   onParticipantsChange: (participants: Participant[]) => void;
   candidatesCount?: number;
   onClearCandidates?: () => void;
+  onRefresh?: () => void;
 }
 
 export default function ParticipantManager({ 
@@ -23,6 +24,7 @@ export default function ParticipantManager({
   onParticipantsChange,
   candidatesCount = 0,
   onClearCandidates,
+  onRefresh,
 }: ParticipantManagerProps) {
   const [name, setName] = useState('');
   const [startLocation, setStartLocation] = useState('');
@@ -114,11 +116,24 @@ export default function ParticipantManager({
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-3 text-xl font-bold">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Users className="h-5 w-5 text-primary" />
+        <CardTitle className="flex items-center justify-between text-xl font-bold">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <span>참여자 등록</span>
           </div>
-          <span>참여자 등록</span>
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRefresh}
+              className="hover:bg-muted"
+              title="참여자 목록 새로고침"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          )}
         </CardTitle>
         <CardDescription className="text-base">
           출발 위치를 등록하면 최적의 만남 장소를 찾아드려요

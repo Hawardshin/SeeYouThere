@@ -51,5 +51,28 @@ export interface Meeting {
   createdAt: Date;
 }
 
+// 방 정보 (서버 저장용)
+export interface Room {
+  roomCode: string;
+  meetingTitle: string;
+  participants: Participant[];
+  candidates: CandidateLocation[];
+  password?: string; // 비밀번호 (선택사항)
+  createdBy?: string; // 생성자 이름
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 방 목록 아이템
+export interface RoomListItem {
+  roomCode: string;
+  meetingTitle: string;
+  participantCount: number;
+  candidateCount: number;
+  hasPassword: boolean;
+  createdBy?: string;
+  updatedAt: string;
+}
+
 // 추천 타입
 export type RecommendationType = 'fairest' | 'fastest';
