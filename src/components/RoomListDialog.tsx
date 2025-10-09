@@ -28,7 +28,7 @@ interface RoomListDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRoomEnter: (roomCode: string, password?: string) => Promise<boolean>;
-  onRoomCreate: (roomCode: string, createdBy: string, password?: string) => Promise<boolean>;
+  onRoomCreate: (roomCode: string, roomTitle: string, password?: string) => Promise<boolean>;
   currentRoomCode?: string | null;
 }
 
@@ -46,7 +46,7 @@ export default function RoomListDialog({
   
   // 방 생성 폼
   const [newRoomCode, setNewRoomCode] = useState('');
-  const [createdBy, setCreatedBy] = useState('');
+  const [newRoomTitle, setNewRoomTitle] = useState('');
   const [newPassword, setNewPassword] = useState('');
   
   // 비밀번호 입력
@@ -88,15 +88,15 @@ export default function RoomListDialog({
 
   // 방 생성 처리
   const handleCreate = async () => {
-    if (!newRoomCode || !createdBy) {
-      alert('방 코드와 생성자 이름을 입력해주세요!');
+    if (!newRoomCode || !newRoomTitle) {
+      alert('방 코드와 방 이름을 입력해주세요!');
       return;
     }
 
-    const success = await onRoomCreate(newRoomCode, createdBy, newPassword || undefined);
+    const success = await onRoomCreate(newRoomCode, newRoomTitle, newPassword || undefined);
     if (success) {
       setNewRoomCode('');
-      setCreatedBy('');
+      setNewRoomTitle('');
       setNewPassword('');
       setMode('list');
     }
@@ -334,12 +334,12 @@ export default function RoomListDialog({
 
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  생성자 이름 <span className="text-destructive">*</span>
+                  방 이름 <span className="text-destructive">*</span>
                 </label>
                 <Input
-                  placeholder="내 이름"
-                  value={createdBy}
-                  onChange={(e) => setCreatedBy(e.target.value)}
+                  placeholder="예: 동창회 모임"
+                  value={newRoomTitle}
+                  onChange={(e) => setNewRoomTitle(e.target.value)}
                 />
               </div>
 

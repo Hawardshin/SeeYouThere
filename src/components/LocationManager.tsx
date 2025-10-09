@@ -38,12 +38,25 @@ export default function LocationManager({
   const [locationAddress, setLocationAddress] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // 목표지 선택 방법 탭
   const [locationTab, setLocationTab] = useState<'popular' | 'subway' | 'search'>('popular');
   const [previewPopularLocation, setPreviewPopularLocation] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'time' | 'maxTime' | 'totalTime'>('maxTime');
   const popularScrollRef = useRef<HTMLDivElement>(null);
+
+  // 새로고침 처리
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+      setTimeout(() => setIsRefreshing(false), 500);
+    } catch {
+      setIsRefreshing(false);
+    }
+  };
 
   // 후보지 추가 로직
   const addCandidateLocation = async (name: string, address: string, coords: { lat: number; lng: number }) => {
@@ -172,11 +185,15 @@ export default function LocationManager({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onRefresh}
-                className="hover:bg-muted"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="hover:bg-muted relative"
                 title="장소 목록 새로고침"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+                {isRefreshing && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping" />
+                )}
               </Button>
             )}
           </CardTitle>

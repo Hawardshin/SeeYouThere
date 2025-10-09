@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { Participant } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

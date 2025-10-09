@@ -86,15 +86,14 @@ export default function Home() {
   };
 
   // 방 생성
-  const handleRoomCreate = async (roomCode: string, createdBy: string, password?: string) => {
+  const handleRoomCreate = async (roomCode: string, roomTitle: string, password?: string) => {
     try {
       const response = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           roomCode,
-          meetingTitle: '새로운 모임',
-          createdBy,
+          meetingTitle: roomTitle,
           password,
         }),
       });
@@ -103,7 +102,7 @@ export default function Home() {
 
       if (data.success) {
         setCurrentRoomCode(roomCode);
-        setMeetingTitle(data.data.meetingTitle);
+        setMeetingTitle(roomTitle);
         setParticipants([]);
         setCandidates([]);
         return true;
@@ -218,7 +217,12 @@ export default function Home() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setShowRoomDialog(true)}
+              onClick={() => {
+                if (!currentRoomCode) {
+                  alert('⚠️ 먼저 방에 입장하거나 새로운 방을 만들어주세요!');
+                }
+                setShowRoomDialog(true);
+              }}
               className="hover:bg-primary/10"
             >
               <List className="h-5 w-5" />
