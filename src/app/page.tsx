@@ -36,9 +36,13 @@ export default function Home() {
   useEffect(() => {
     if (!departureTime) {
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
+      // 내일 날짜로 설정
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const year = tomorrow.getFullYear();
+      const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+      const day = String(tomorrow.getDate()).padStart(2, '0');
       setDepartureTime(`${year}-${month}-${day}T13:00`);
     }
   }, [departureTime]);
