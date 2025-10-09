@@ -33,9 +33,9 @@ export default function SubwayStationPicker({
   const scrollRef = useRef<HTMLDivElement>(null);
   const lineScrollRef = useRef<HTMLDivElement>(null);
 
+  // 검색어가 있으면 모든 호선에서 검색, 없으면 선택된 호선만
   const filteredStations = subwayStations
-    .filter(s => s.line === selectedLine)
-    .filter(s => searchQuery === '' || s.name.includes(searchQuery));
+    .filter(s => searchQuery === '' ? s.line === selectedLine : s.name.includes(searchQuery));
 
   const handleStationClick = (stationId: string) => {
     const newPreview = previewStation === stationId ? null : stationId;
@@ -140,7 +140,7 @@ export default function SubwayStationPicker({
           {!compact && (
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-semibold text-foreground">
-                {selectedLine} ({filteredStations.length}개역)
+                {searchQuery ? `검색결과 (${filteredStations.length}개역)` : `${selectedLine} (${filteredStations.length}개역)`}
               </h4>
               <div className="flex gap-1">
                 <button
