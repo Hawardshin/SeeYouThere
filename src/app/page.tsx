@@ -10,6 +10,7 @@ import ParticipantAnalysis from '@/components/ParticipantAnalysis';
 import ShareDialog from '@/components/ShareDialog';
 import RoomListDialog from '@/components/RoomListDialog';
 import ThemeToggle from '@/components/ThemeToggle';
+import AlertModal, { useAlertModal } from '@/components/AlertModal';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List, TestTube } from 'lucide-react';
 
@@ -25,6 +26,7 @@ export default function Home() {
   const [resultView, setResultView] = useState<'overview' | 'individual'>('overview');
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isTemporaryMode, setIsTemporaryMode] = useState(false);
+  const { alertState, showAlert, closeAlert } = useAlertModal();
 
   useEffect(() => {
     if (!departureTime) {
@@ -103,12 +105,15 @@ export default function Home() {
         setCandidates([]);
         return true;
       } else {
-        alert(data.error === 'Room already exists' ? '이미 존재하는 방 코드입니다.' : '방 생성에 실패했습니다.');
+        showAlert(
+          data.error === 'Room already exists' ? '이미 존재하는 방 코드입니다.' : '방 생성에 실패했습니다.',
+          { variant: 'error' }
+        );
         return false;
       }
     } catch (error) {
       console.error('방 생성 오류:', error);
-      alert('방 생성 중 오류가 발생했습니다.');
+      showAlert('방 생성 중 오류가 발생했습니다.', { variant: 'error' });
       return false;
     }
   };
@@ -176,11 +181,11 @@ export default function Home() {
   // 다음 단계로
   const handleNext = () => {
     if (currentStep === 1 && participants.length === 0) {
-      alert('최소 1명의 참여자를 추가해주세요!');
+      showAlert('최소 1명의 참여자를 추가해주세요!', { variant: 'warning' });
       return;
     }
     if (currentStep === 2 && candidates.length === 0) {
-      alert('최소 1개의 후보 장소를 추가해주세요!');
+      showAlert('최소 1개의 후보 장소를 추가해주세요!', { variant: 'warning' });
       return;
     }
     setCurrentStep(prev => Math.min(prev + 1, 3));
@@ -223,7 +228,7 @@ export default function Home() {
               size="icon"
               onClick={() => {
                 if (!currentRoomCode) {
-                  alert('⚠️ 먼저 방에 입장하거나 새로운 방을 만들어주세요!');
+                  showAlert('먼저 방에 입장하거나 새로운 방을 만들어주세요!', { variant: 'warning' });
                 }
                 setShowRoomDialog(true);
               }}
@@ -479,6 +484,15 @@ export default function Home() {
           </div>
         </motion.div>
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        open={alertState.open}
+        onOpenChange={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        variant={alertState.variant}
+      />
     </div>
   );
 }

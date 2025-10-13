@@ -9,6 +9,7 @@ import { Trash2, Users, Bus, MapPin, RefreshCw } from 'lucide-react';
 import AddressSearch from './AddressSearch';
 import SubwayStationPicker from './SubwayStationPicker';
 import { subwayStations } from '@/data/subwayStations';
+import AlertModal, { useAlertModal } from './AlertModal';
 
 interface ParticipantManagerProps {
   participants: Participant[];
@@ -31,6 +32,7 @@ export default function ParticipantManager({
   const [transportMode, setTransportMode] = useState<'car' | 'transit'>('transit');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  const { alertState, showAlert, closeAlert } = useAlertModal();
   
   // 출발지 선택 방법 탭
   const [startLocationTab, setStartLocationTab] = useState<'search' | 'subway'>('search');
@@ -44,7 +46,7 @@ export default function ParticipantManager({
     
     if (timeSinceLastRefresh < 5000) {
       const remainingSeconds = Math.ceil((5000 - timeSinceLastRefresh) / 1000);
-      alert(`⏱️ ${remainingSeconds}초 후에 다시 시도해주세요.`);
+      showAlert(`${remainingSeconds}초 후에 다시 시도해주세요.`, { variant: 'warning' });
       return;
     }
     
@@ -61,12 +63,12 @@ export default function ParticipantManager({
 
   const handleAddParticipant = () => {
     if (!name.trim() || !startLocation.trim()) {
-      alert('이름과 출발지를 모두 입력해주세요.');
+      showAlert('이름과 출발지를 모두 입력해주세요.', { variant: 'warning' });
       return;
     }
 
     if (!coordinates || typeof coordinates.lat !== 'number' || typeof coordinates.lng !== 'number') {
-      alert('출발지 좌표를 찾을 수 없습니다. 검색 결과에서 장소를 선택해주세요.');
+      showAlert('출발지 좌표를 찾을 수 없습니다. 검색 결과에서 장소를 선택해주세요.', { variant: 'warning' });
       return;
     }
 
@@ -94,7 +96,7 @@ export default function ParticipantManager({
 
   const handleAddParticipantWithSubway = (stationId: string) => {
     if (!name.trim()) {
-      alert('이름을 입력해주세요.');
+      showAlert('이름을 입력해주세요.', { variant: 'warning' });
       return;
     }
 
@@ -375,6 +377,15 @@ export default function ParticipantManager({
           </div>
         </div>
       </CardContent>
+
+      {/* Alert Modal */}
+      <AlertModal
+        open={alertState.open}
+        onOpenChange={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        variant={alertState.variant}
+      />
     </Card>
   );
 }

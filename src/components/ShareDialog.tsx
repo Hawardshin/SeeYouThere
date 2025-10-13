@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Share2, Copy, Check, Loader2 } from 'lucide-react';
+import AlertModal, { useAlertModal } from './AlertModal';
 
 interface ShareDialogProps {
   meetingTitle: string;
@@ -25,6 +26,7 @@ export default function ShareDialog({ meetingTitle, participants, candidates }: 
   const [hasShareApi, setHasShareApi] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const { alertState, showAlert, closeAlert } = useAlertModal();
 
   useEffect(() => {
     setHasShareApi(typeof navigator !== 'undefined' && 'share' in navigator);
@@ -54,12 +56,12 @@ export default function ShareDialog({ meetingTitle, participants, candidates }: 
         setShareUrl(data.shareUrl);
         return data.shareUrl;
       } else {
-        alert('모임 저장에 실패했습니다.');
+        showAlert('모임 저장에 실패했습니다.', { variant: 'error' });
         return null;
       }
     } catch (error) {
       console.error('모임 저장 오류:', error);
-      alert('모임 저장 중 오류가 발생했습니다.');
+      showAlert('모임 저장 중 오류가 발생했습니다.', { variant: 'error' });
       return null;
     } finally {
       setIsSaving(false);
@@ -106,7 +108,7 @@ export default function ShareDialog({ meetingTitle, participants, candidates }: 
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('복사 실패:', err);
-      alert('복사에 실패했습니다.');
+      showAlert('복사에 실패했습니다.', { variant: 'error' });
     }
   };
 
@@ -255,6 +257,15 @@ export default function ShareDialog({ meetingTitle, participants, candidates }: 
           </div>
         </div>
       </DialogContent>
+
+      {/* Alert Modal */}
+      <AlertModal
+        open={alertState.open}
+        onOpenChange={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        variant={alertState.variant}
+      />
     </Dialog>
   );
 }

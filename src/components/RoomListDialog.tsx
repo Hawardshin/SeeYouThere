@@ -24,6 +24,7 @@ import {
   Search,
   TestTube
 } from 'lucide-react';
+import AlertModal, { useAlertModal } from './AlertModal';
 
 interface RoomListDialogProps {
   open: boolean;
@@ -46,6 +47,7 @@ export default function RoomListDialog({
   const [rooms, setRooms] = useState<RoomListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { alertState, showAlert, closeAlert } = useAlertModal();
   
   // 방 생성 폼
   const [newRoomCode, setNewRoomCode] = useState('');
@@ -92,7 +94,7 @@ export default function RoomListDialog({
   // 방 생성 처리
   const handleCreate = async () => {
     if (!newRoomCode || !newRoomTitle) {
-      alert('방 코드와 방 이름을 입력해주세요!');
+      showAlert('방 코드와 방 이름을 입력해주세요!', { variant: 'warning' });
       return;
     }
 
@@ -408,6 +410,15 @@ export default function RoomListDialog({
           )}
         </div>
       </DialogContent>
+
+      {/* Alert Modal */}
+      <AlertModal
+        open={alertState.open}
+        onOpenChange={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        variant={alertState.variant}
+      />
     </Dialog>
   );
 }

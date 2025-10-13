@@ -13,6 +13,7 @@ import SubwayStationPicker from './SubwayStationPicker';
 import { popularLocations } from '@/data/popularLocations';
 import { subwayStations } from '@/data/subwayStations';
 import MapView from './MapView';
+import AlertModal, { useAlertModal } from './AlertModal';
 
 interface LocationManagerProps {
   participants: Participant[];
@@ -40,6 +41,7 @@ export default function LocationManager({
   const [isCalculating, setIsCalculating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  const { alertState, showAlert, closeAlert } = useAlertModal();
   
   // 목표지 선택 방법 탭
   const [locationTab, setLocationTab] = useState<'popular' | 'subway' | 'search'>('popular');
@@ -56,7 +58,7 @@ export default function LocationManager({
     
     if (timeSinceLastRefresh < 5000) {
       const remainingSeconds = Math.ceil((5000 - timeSinceLastRefresh) / 1000);
-      alert(`⏱️ ${remainingSeconds}초 후에 다시 시도해주세요.`);
+      showAlert(`${remainingSeconds}초 후에 다시 시도해주세요.`, { variant: 'warning' });
       return;
     }
     
@@ -74,7 +76,7 @@ export default function LocationManager({
   // 후보지 추가 로직
   const addCandidateLocation = async (name: string, address: string, coords: { lat: number; lng: number }) => {
     if (participants.length === 0) {
-      alert('참여자를 먼저 추가해주세요.');
+      showAlert('참여자를 먼저 추가해주세요.', { variant: 'warning' });
       return;
     }
 
@@ -116,7 +118,7 @@ export default function LocationManager({
       setPreviewPopularLocation(null);
     } catch (error) {
       console.error('Error calculating travel times:', error);
-      alert('경로 계산 중 오류가 발생했습니다.');
+      showAlert('경로 계산 중 오류가 발생했습니다.', { variant: 'error' });
     } finally {
       setIsCalculating(false);
     }
@@ -124,12 +126,12 @@ export default function LocationManager({
 
   const handleAddLocation = async () => {
     if (!locationAddress.trim()) {
-      alert('장소명을 입력해주세요.');
+      showAlert('장소명을 입력해주세요.', { variant: 'warning' });
       return;
     }
 
     if (!coordinates || typeof coordinates.lat !== 'number' || typeof coordinates.lng !== 'number') {
-      alert('좌표를 찾을 수 없습니다. 검색 결과에서 장소를 선택해주세요.');
+      showAlert('좌표를 찾을 수 없습니다. 검색 결과에서 장소를 선택해주세요.', { variant: 'warning' });
       return;
     }
 
@@ -516,6 +518,15 @@ export default function LocationManager({
           </CardContent>
         </Card>
       )}
+
+      {/* Alert Modal */}
+      <AlertModal
+        open={alertState.open}
+        onOpenChange={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        variant={alertState.variant}
+      />
     </div>
   );
 }
