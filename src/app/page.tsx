@@ -50,24 +50,12 @@ export default function Home() {
     }
   }, [departureTime]);
 
-  // 로컬스토리지에서 현재 방 복구
+  // 초기 로드 시 방 목록 다이얼로그 표시
   useEffect(() => {
-    const savedRoomCode = localStorage.getItem('currentRoomCode');
-    if (savedRoomCode) {
-      setCurrentRoomCode(savedRoomCode);
-      loadRoomData(savedRoomCode);
-    } else {
-      // 저장된 방이 없으면 방 목록 다이얼로그 표시
+    if (!currentRoomCode) {
       setShowRoomDialog(true);
     }
   }, []);
-
-  // 현재 방 코드가 변경되면 로컬스토리지에 저장
-  useEffect(() => {
-    if (currentRoomCode) {
-      localStorage.setItem('currentRoomCode', currentRoomCode);
-    }
-  }, [currentRoomCode]);
 
   // 방 데이터 로드
   const loadRoomData = async (roomCode: string) => {
@@ -179,12 +167,15 @@ export default function Home() {
   useEffect(() => {
     if (currentRoomCode && !isLoadingData && (participants.length > 0 || candidates.length > 0)) {
       const timer = setTimeout(() => {
+        // '새로운 모임'은 저장하지 않음 (기존 방 이름 유지)
+        const titleToSave = meetingTitle === '새로운 모임' ? undefined : meetingTitle;
+        
         fetch('/api/rooms', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             roomCode: currentRoomCode,
-            meetingTitle,
+            meetingTitle: titleToSave,
             participants,
             candidates,
           }),

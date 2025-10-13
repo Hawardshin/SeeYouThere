@@ -368,8 +368,8 @@ export async function PUT(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // 2. 방 정보 업데이트 (meetingTitle이 있으면)
-    if (meetingTitle !== undefined) {
+    // 2. 방 정보 업데이트 (meetingTitle이 있고 '새로운 모임'이 아닐 때만)
+    if (meetingTitle !== undefined && meetingTitle !== '새로운 모임' && meetingTitle.trim() !== '') {
       await supabase
         .from('rooms')
         .update({ 
