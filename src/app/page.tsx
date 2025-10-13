@@ -32,6 +32,9 @@ export default function Home() {
   // 결과 페이지 뷰 모드 (overview: 전체 분석, individual: 개인별 분석)
   const [resultView, setResultView] = useState<'overview' | 'individual'>('overview');
 
+  // 데이터 로딩 중 플래그 (로딩 중에는 자동저장 방지)
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
   // 클라이언트에서만 기본 출발 시간 설정 (hydration 불일치 방지)
   useEffect(() => {
     if (!departureTime) {
@@ -69,13 +72,13 @@ export default function Home() {
   // 방 데이터 로드
   const loadRoomData = async (roomCode: string) => {
     try {
+      setIsLoadingData(true);
       const response = await fetch(`/api/rooms?roomCode=${roomCode}`);
       const data = await response.json();
 
-      console.log('📦 방 데이터 로드:', data); // 디버깅 로그
+      console.log('📦 방 데이터 로드:', data);
 
       if (data.success) {
-        // meetingTitle이 존재하는 경우에만 업데이트 (빈 문자열로 덮어쓰지 않도록)
         if (data.data.meetingTitle) {
           setMeetingTitle(data.data.meetingTitle);
         }
@@ -90,6 +93,9 @@ export default function Home() {
       }
     } catch (error) {
       console.error('❌ 방 데이터 로드 에러:', error);
+    } finally {
+      // 데이터 로드 완료 후 약간의 지연을 두고 플래그 해제
+      setTimeout(() => setIsLoadingData(false), 500);
     }
   };
 
@@ -171,7 +177,7 @@ export default function Home() {
 
   // 자동 저장
   useEffect(() => {
-    if (currentRoomCode) {
+    if (currentRoomCode && !isLoadingData && (participants.length > 0 || candidates.length > 0)) {
       const timer = setTimeout(() => {
         fetch('/api/rooms', {
           method: 'PUT',
@@ -187,7 +193,7 @@ export default function Home() {
 
       return () => clearTimeout(timer);
     }
-  }, [participants, candidates, meetingTitle, currentRoomCode]);
+  }, [participants, candidates, meetingTitle, currentRoomCode, isLoadingData]);
 
   // 다음 단계로
   const handleNext = () => {

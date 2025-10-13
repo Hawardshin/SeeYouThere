@@ -385,8 +385,8 @@ export async function PUT(request: NextRequest) {
         .eq('id', room.id);
     }
 
-    // 3. 참여자 업데이트 (있으면)
-    if (participants !== undefined) {
+    // 3. 참여자 업데이트 (배열이 있고 길이가 0보다 큰 경우에만)
+    if (participants !== undefined && participants.length > 0) {
       // 기존 참여자 모두 삭제
       await supabase
         .from('participants')
@@ -394,23 +394,21 @@ export async function PUT(request: NextRequest) {
         .eq('room_id', room.id);
 
       // 새 참여자 추가
-      if (participants.length > 0) {
-        const participantsToInsert = participants.map((p: Participant) => ({
-          room_id: room.id,
-          name: p.name,
-          start_location: {
-            address: p.startLocation,
-            coordinates: p.coordinates,
-          },
-          transport_mode: p.transportMode,
-        }));
+      const participantsToInsert = participants.map((p: Participant) => ({
+        room_id: room.id,
+        name: p.name,
+        start_location: {
+          address: p.startLocation,
+          coordinates: p.coordinates,
+        },
+        transport_mode: p.transportMode,
+      }));
 
-        await supabase.from('participants').insert(participantsToInsert);
-      }
+      await supabase.from('participants').insert(participantsToInsert);
     }
 
-    // 4. 후보지 업데이트 (있으면)
-    if (candidates !== undefined) {
+    // 4. 후보지 업데이트 (배열이 있고 길이가 0보다 큰 경우에만)
+    if (candidates !== undefined && candidates.length > 0) {
       // 기존 후보지 모두 삭제
       await supabase
         .from('candidate_locations')
@@ -418,18 +416,16 @@ export async function PUT(request: NextRequest) {
         .eq('room_id', room.id);
 
       // 새 후보지 추가
-      if (candidates.length > 0) {
-        const candidatesToInsert = candidates.map((c: CandidateLocation) => ({
-          room_id: room.id,
-          location_id: c.id,
-          name: c.name,
-          address: c.address,
-          coordinates: c.coordinates,
-          travel_times: c.travelTimes,
-        }));
+      const candidatesToInsert = candidates.map((c: CandidateLocation) => ({
+        room_id: room.id,
+        location_id: c.id,
+        name: c.name,
+        address: c.address,
+        coordinates: c.coordinates,
+        travel_times: c.travelTimes,
+      }));
 
-        await supabase.from('candidate_locations').insert(candidatesToInsert);
-      }
+      await supabase.from('candidate_locations').insert(candidatesToInsert);
     }
 
     // 5. 업데이트된 데이터 반환
