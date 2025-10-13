@@ -21,7 +21,8 @@ import {
   Plus, 
   RefreshCw,
   Clock,
-  Search
+  Search,
+  TestTube
 } from 'lucide-react';
 
 interface RoomListDialogProps {
@@ -30,6 +31,7 @@ interface RoomListDialogProps {
   onRoomEnter: (roomCode: string, password?: string) => Promise<boolean>;
   onRoomCreate: (roomCode: string, roomTitle: string, password?: string) => Promise<boolean>;
   currentRoomCode?: string | null;
+  onTemporaryMode?: () => void;
 }
 
 export default function RoomListDialog({
@@ -37,7 +39,8 @@ export default function RoomListDialog({
   onOpenChange,
   onRoomEnter,
   onRoomCreate,
-  currentRoomCode
+  currentRoomCode,
+  onTemporaryMode
 }: RoomListDialogProps) {
   const [mode, setMode] = useState<'list' | 'create'>('list');
   const [rooms, setRooms] = useState<RoomListItem[]>([]);
@@ -372,6 +375,19 @@ export default function RoomListDialog({
                 <Plus className="h-4 w-4 mr-2" />
                 새 방 만들기
               </Button>
+              {onTemporaryMode && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    onTemporaryMode();
+                    onOpenChange(false);
+                  }}
+                  className="flex-1 border-dashed"
+                >
+                  <TestTube className="h-4 w-4 mr-2" />
+                  임시 모드
+                </Button>
+              )}
             </>
           ) : (
             <>

@@ -5,18 +5,20 @@ import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles, LogIn } from 'lucide-react';
+import { Loader2, Sparkles, LogIn, TestTube } from 'lucide-react';
 
 interface RoomEntranceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRoomEnter: (roomCode: string, isNew: boolean) => void;
+  onTemporaryMode?: () => void;
 }
 
 export default function RoomEntranceDialog({ 
   open, 
   onOpenChange, 
-  onRoomEnter 
+  onRoomEnter,
+  onTemporaryMode
 }: RoomEntranceDialogProps) {
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -219,6 +221,42 @@ export default function RoomEntranceDialog({
             >
               {error}
             </motion.div>
+          )}
+
+          {/* 임시 모드 */}
+          {onTemporaryMode && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-dashed" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-card px-3 py-1 text-muted-foreground">저장하지 않고 테스트</span>
+                </div>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="space-y-3"
+              >
+                <Button 
+                  onClick={() => {
+                    onTemporaryMode();
+                    onOpenChange(false);
+                  }}
+                  variant="outline"
+                  className="w-full py-6 text-base font-semibold border-dashed"
+                >
+                  <TestTube className="mr-2 h-5 w-5" />
+                  방 없이 실행해보기
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  💡 저장되지 않으며, 새로고침 시 데이터가 사라집니다
+                </p>
+              </motion.div>
+            </>
           )}
         </div>
       </DialogContent>

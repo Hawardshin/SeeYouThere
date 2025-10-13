@@ -11,36 +11,24 @@ import ShareDialog from '@/components/ShareDialog';
 import RoomListDialog from '@/components/RoomListDialog';
 import ThemeToggle from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List, TestTube } from 'lucide-react';
 
 export default function Home() {
   const [meetingTitle, setMeetingTitle] = useState('새로운 모임');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [candidates, setCandidates] = useState<CandidateLocation[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
-  
-  // 출발 시간 설정 (기본값: 빈 문자열, useEffect에서 설정)
   const [departureTime, setDepartureTime] = useState('');
-  
-  // 방 관련 상태
   const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null);
   const [showRoomDialog, setShowRoomDialog] = useState(false);
-  
-  // 🎯 스텝 관리 (1: 참여자, 2: 장소, 3: 결과)
   const [currentStep, setCurrentStep] = useState(1);
-  
-  // 결과 페이지 뷰 모드 (overview: 전체 분석, individual: 개인별 분석)
   const [resultView, setResultView] = useState<'overview' | 'individual'>('overview');
-
-  // 데이터 로딩 중 플래그 (로딩 중에는 자동저장 방지)
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isTemporaryMode, setIsTemporaryMode] = useState(false);
 
-  // 클라이언트에서만 기본 출발 시간 설정 (hydration 불일치 방지)
   useEffect(() => {
     if (!departureTime) {
-      const now = new Date();
-      // 내일 날짜로 설정
-      const tomorrow = new Date(now);
+      const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       
       const year = tomorrow.getFullYear();
@@ -50,12 +38,11 @@ export default function Home() {
     }
   }, [departureTime]);
 
-  // 초기 로드 시 방 목록 다이얼로그 표시
   useEffect(() => {
-    if (!currentRoomCode) {
+    if (!currentRoomCode && !isTemporaryMode) {
       setShowRoomDialog(true);
     }
-  }, []);
+  }, [currentRoomCode, isTemporaryMode]);
 
   // 방 데이터 로드
   const loadRoomData = async (roomCode: string) => {
@@ -163,9 +150,9 @@ export default function Home() {
     }
   };
 
-  // 자동 저장
+  // 자동 저장 (임시 모드에서는 저장하지 않음)
   useEffect(() => {
-    if (currentRoomCode && !isLoadingData && (participants.length > 0 || candidates.length > 0)) {
+    if (currentRoomCode && !isLoadingData && !isTemporaryMode && (participants.length > 0 || candidates.length > 0)) {
       const timer = setTimeout(() => {
         // '새로운 모임'은 저장하지 않음 (기존 방 이름 유지)
         const titleToSave = meetingTitle === '새로운 모임' ? undefined : meetingTitle;
@@ -184,7 +171,7 @@ export default function Home() {
 
       return () => clearTimeout(timer);
     }
-  }, [participants, candidates, meetingTitle, currentRoomCode, isLoadingData]);
+  }, [participants, candidates, meetingTitle, currentRoomCode, isLoadingData, isTemporaryMode]);
 
   // 다음 단계로
   const handleNext = () => {
@@ -215,6 +202,11 @@ export default function Home() {
         onRoomEnter={handleRoomEnter}
         onRoomCreate={handleRoomCreate}
         currentRoomCode={currentRoomCode}
+        onTemporaryMode={() => {
+          setIsTemporaryMode(true);
+          setMeetingTitle('임시 테스트');
+          setShowRoomDialog(false);
+        }}
       />
 
       <div className="max-w-4xl mx-auto px-4 py-6 md:py-8">
@@ -254,7 +246,13 @@ export default function Home() {
           <p className="text-base md:text-xl text-muted-foreground mb-2">
             모두에게 공평한 만남의 장소 찾기
           </p>
-          {currentRoomCode && (
+          {isTemporaryMode && (
+            <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-orange-500/10 border-2 border-orange-500/30 rounded-full">
+              <TestTube className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-bold text-orange-500">임시 모드 (저장되지 않음)</span>
+            </div>
+          )}
+          {currentRoomCode && !isTemporaryMode && (
             <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-accent rounded-full border">
               <span className="text-sm text-muted-foreground">방 코드:</span>
               <span className="font-bold text-primary">{currentRoomCode}</span>
