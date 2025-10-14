@@ -99,6 +99,7 @@ export default function Home() {
       const data = await response.json();
 
       if (data.success) {
+        setIsTemporaryMode(false);
         setCurrentRoomCode(roomCode);
         setMeetingTitle(roomTitle);
         setParticipants([]);
@@ -135,6 +136,7 @@ export default function Home() {
         const data = await response.json();
 
         if (data.success) {
+          setIsTemporaryMode(false);
           setCurrentRoomCode(roomCode);
           setMeetingTitle(data.data.meetingTitle);
           setParticipants(data.data.participants || []);
@@ -146,6 +148,7 @@ export default function Home() {
       } else {
         // 비밀번호 없는 방
         await loadRoomData(roomCode);
+        setIsTemporaryMode(false); 
         setCurrentRoomCode(roomCode);
         return true;
       }
@@ -226,12 +229,7 @@ export default function Home() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => {
-                if (!currentRoomCode) {
-                  showAlert('먼저 방에 입장하거나 새로운 방을 만들어주세요!', { variant: 'warning' });
-                }
-                setShowRoomDialog(true);
-              }}
+              onClick={() => setShowRoomDialog(true)}
               className="hover:bg-primary/10"
             >
               <List className="h-5 w-5" />
@@ -258,9 +256,13 @@ export default function Home() {
             </div>
           )}
           {currentRoomCode && !isTemporaryMode && (
-            <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-accent rounded-full border">
-              <span className="text-sm text-muted-foreground">방 코드:</span>
-              <span className="font-bold text-primary">{currentRoomCode}</span>
+            <div className="inline-flex items-center gap-3 mt-3 px-4 py-2 bg-accent rounded-full border">
+              <span className="text-sm font-semibold text-foreground">{meetingTitle}</span>
+              <div className="h-4 w-px bg-border"></div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">방 코드:</span>
+                <span className="font-bold text-primary">{currentRoomCode}</span>
+              </div>
             </div>
           )}
         </motion.div>
