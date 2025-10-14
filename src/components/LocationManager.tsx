@@ -381,7 +381,15 @@ export default function LocationManager({
                 placeholder="예: 서울역, 강남역 스타벅스"
                 defaultValue={locationAddress}
                 buttonLabel="장소 추가"
-                onConfirm={handleAddLocation}
+                onConfirm={async (address, coords) => {
+                  // onConfirm으로 받은 장소 정보를 직접 사용 (state 업데이트 비동기 문제 방지)
+                  if (!coords || typeof coords.lat !== 'number' || typeof coords.lng !== 'number') {
+                    showAlert('좌표를 찾을 수 없습니다. 검색 결과에서 장소를 선택해주세요.', { variant: 'warning' });
+                    return;
+                  }
+
+                  await addCandidateLocation(address, address, coords);
+                }}
               />
             </div>
           )}
