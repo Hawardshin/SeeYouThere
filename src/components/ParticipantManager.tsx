@@ -252,7 +252,40 @@ export default function ParticipantManager({
                     setStartLocation(address);
                     setCoordinates(coords);
                   }}
-                  onConfirm={handleAddParticipant}
+                  onConfirm={(address: string, coords: { lat: number; lng: number }) => {
+                    // 이름 체크
+                    if (!name.trim()) {
+                      showAlert('이름을 입력해주세요.', { variant: 'warning' });
+                      return;
+                    }
+
+                    // onConfirm으로 받은 장소 정보를 직접 사용 (state 업데이트 비동기 문제 방지)
+                    if (!coords || typeof coords.lat !== 'number' || typeof coords.lng !== 'number') {
+                      showAlert('출발지 좌표를 찾을 수 없습니다. 검색 결과에서 장소를 선택해주세요.', { variant: 'warning' });
+                      return;
+                    }
+
+                    if (candidatesCount > 0 && onClearCandidates) {
+                      const confirmClear = window.confirm(
+                        `⚠️ 인원 추가 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
+                      );
+                      if (!confirmClear) return;
+                      onClearCandidates();
+                    }
+
+                    const newParticipant: Participant = {
+                      id: Date.now().toString(),
+                      name: name.trim(),
+                      startLocation: address.trim(),
+                      coordinates: { lat: coords.lat, lng: coords.lng },
+                      transportMode,
+                    };
+
+                    onParticipantsChange([...participants, newParticipant]);
+                    setName('');
+                    setStartLocation('');
+                    setCoordinates(undefined);
+                  }}
                   buttonLabel="참여자 추가"
                   placeholder="예: 강남역, 홍대입구역"
                 />

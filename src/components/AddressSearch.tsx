@@ -11,7 +11,7 @@ interface AddressSearchProps {
   placeholder?: string;
   defaultValue?: string;
   buttonLabel?: string; // 플로팅 버튼 텍스트 (예: "참여자 추가", "후보지 추가")
-  onConfirm?: () => void; // 플로팅 버튼 클릭 시 추가 동작
+  onConfirm?: (address: string, coordinates: { lat: number; lng: number }) => void; // 플로팅 버튼 클릭 시 추가 동작 (장소 정보 전달)
 }
 
 export default function AddressSearch({ 
@@ -43,9 +43,9 @@ export default function AddressSearch({
     console.log('[AddressSearch] 장소 확정:', previewPlace);
     onSelect(previewPlace.name, previewPlace.coordinates);
     
-    // onConfirm 콜백이 있으면 실행 (ParticipantManager의 handleAddParticipant 등)
+    // onConfirm 콜백이 있으면 장소 정보와 함께 실행 (ParticipantManager의 handleAddParticipant 등)
     if (onConfirm) {
-      onConfirm();
+      onConfirm(previewPlace.name, previewPlace.coordinates);
     }
     
     // 선택 완료 후 초기화
