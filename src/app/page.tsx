@@ -213,6 +213,11 @@ export default function Home() {
         onTemporaryMode={() => {
           setIsTemporaryMode(true);
           setMeetingTitle('임시 테스트');
+          setCurrentRoomCode(null);
+          setParticipants([]);
+          setCandidates([]);
+          setSelectedLocationId(null);
+          setCurrentStep(1);
           setShowRoomDialog(false);
         }}
       />
