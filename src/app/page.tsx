@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Participant, CandidateLocation } from '@/types';
 import ParticipantManager from '@/components/ParticipantManager';
 import LocationManager from '@/components/LocationManager';
 import ResultsDisplay from '@/components/ResultsDisplay';
@@ -13,20 +12,33 @@ import ThemeToggle from '@/components/ThemeToggle';
 import AlertModal, { useAlertModal } from '@/components/AlertModal';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List, TestTube } from 'lucide-react';
+import { useRoomState } from '@/hooks/useRoomState';
+import { useParticipants } from '@/hooks/useParticipants';
+import { useCandidates } from '@/hooks/useCandidates';
+import { useRoomData } from '@/hooks/useRoomData';
 
 export default function Home() {
-  const [meetingTitle, setMeetingTitle] = useState('새로운 모임');
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [candidates, setCandidates] = useState<CandidateLocation[]>([]);
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  // Custom Hooks
+  const roomState = useRoomState();
+  const participantsState = useParticipants();
+  const candidatesState = useCandidates();
+  
+  const { alertState, showAlert, closeAlert } = useAlertModal();
   const [departureTime, setDepartureTime] = useState('');
-  const [currentRoomCode, setCurrentRoomCode] = useState<string | null>(null);
-  const [showRoomDialog, setShowRoomDialog] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [resultView, setResultView] = useState<'overview' | 'individual'>('overview');
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [isTemporaryMode, setIsTemporaryMode] = useState(false);
-  const { alertState, showAlert, closeAlert } = useAlertModal();
+
+  // Room Data Hook
+  const roomData = useRoomData({
+    currentRoomCode: roomState.currentRoomCode,
+    isTemporaryMode: roomState.isTemporaryMode,
+    participants: participantsState.participants,
+    candidates: candidatesState.candidates,
+    meetingTitle: roomState.meetingTitle,
+    setParticipants: participantsState.setParticipants,
+    setCandidates: candidatesState.setCandidates,
+    setMeetingTitle: roomState.setMeetingTitle,
+  });
 
   useEffect(() => {
     if (!departureTime) {
@@ -40,154 +52,50 @@ export default function Home() {
     }
   }, [departureTime]);
 
-  useEffect(() => {
-    if (!currentRoomCode && !isTemporaryMode) {
-      setShowRoomDialog(true);
-    }
-  }, [currentRoomCode, isTemporaryMode]);
-
-  // 방 데이터 로드
-  const loadRoomData = async (roomCode: string) => {
-    try {
-      setIsLoadingData(true);
-      const response = await fetch(`/api/rooms?roomCode=${roomCode}`);
-      const data = await response.json();
-
-      console.log('📦 방 데이터 로드:', data);
-
-      if (data.success) {
-        if (data.data.meetingTitle) {
-          setMeetingTitle(data.data.meetingTitle);
-        }
-        setParticipants(data.data.participants || []);
-        setCandidates(data.data.candidates || []);
-        
-        console.log('✅ 참여자:', data.data.participants?.length || 0);
-        console.log('✅ 후보지:', data.data.candidates?.length || 0);
-        console.log('✅ 후보지 상세:', data.data.candidates);
-      } else {
-        console.error('❌ 방 데이터 로드 실패:', data.error);
-      }
-    } catch (error) {
-      console.error('❌ 방 데이터 로드 에러:', error);
-    } finally {
-      // 데이터 로드 완료 후 약간의 지연을 두고 플래그 해제
-      setTimeout(() => setIsLoadingData(false), 500);
-    }
-  };
-
-  // 방 새로고침
-  const handleRefreshRoom = async () => {
-    if (currentRoomCode) {
-      await loadRoomData(currentRoomCode);
-    }
-  };
-
-  // 방 생성
+  // 방 생성 핸들러
   const handleRoomCreate = async (roomCode: string, roomTitle: string, password?: string) => {
-    try {
-      const response = await fetch('/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomCode,
-          meetingTitle: roomTitle,
-          password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setIsTemporaryMode(false);
-        setCurrentRoomCode(roomCode);
-        setMeetingTitle(roomTitle);
-        setParticipants([]);
-        setCandidates([]);
-        return true;
-      } else {
-        showAlert(
-          data.error === 'Room already exists' ? '이미 존재하는 방 코드입니다.' : '방 생성에 실패했습니다.',
-          { variant: 'error' }
-        );
-        return false;
-      }
-    } catch (error) {
-      console.error('방 생성 오류:', error);
-      showAlert('방 생성 중 오류가 발생했습니다.', { variant: 'error' });
+    const result = await roomData.createRoom(roomCode, roomTitle, password);
+    
+    if (result.success) {
+      roomState.enterRoom(roomCode, roomTitle);
+      participantsState.clearParticipants();
+      candidatesState.clearCandidates();
+      return true;
+    } else {
+      showAlert(
+        result.error === 'Room already exists' ? '이미 존재하는 방 코드입니다.' : '방 생성에 실패했습니다.',
+        { variant: 'error' }
+      );
       return false;
     }
   };
 
-  // 방 입장
+  // 방 입장 핸들러
   const handleRoomEnter = async (roomCode: string, password?: string) => {
-    try {
-      if (password !== undefined) {
-        // 비밀번호 확인
-        const response = await fetch('/api/rooms', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            roomCode,
-            verifyPassword: password,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          setIsTemporaryMode(false);
-          setCurrentRoomCode(roomCode);
-          setMeetingTitle(data.data.meetingTitle);
-          setParticipants(data.data.participants || []);
-          setCandidates(data.data.candidates || []);
-          return true;
-        } else {
-          return false;
-        }
-      } else {
-        // 비밀번호 없는 방
-        await loadRoomData(roomCode);
-        setIsTemporaryMode(false); 
-        setCurrentRoomCode(roomCode);
-        return true;
-      }
-    } catch (error) {
-      console.error('방 입장 오류:', error);
-      return false;
+    const result = await roomData.enterRoom(roomCode, password);
+    
+    if (result.success) {
+      roomState.enterRoom(roomCode, result.data?.meetingTitle);
+      return true;
     }
+    return false;
   };
 
-  // 자동 저장 (임시 모드에서는 저장하지 않음)
-  useEffect(() => {
-    if (currentRoomCode && !isLoadingData && !isTemporaryMode && (participants.length > 0 || candidates.length > 0)) {
-      const timer = setTimeout(() => {
-        // '새로운 모임'은 저장하지 않음 (기존 방 이름 유지)
-        const titleToSave = meetingTitle === '새로운 모임' ? undefined : meetingTitle;
-        
-        fetch('/api/rooms', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            roomCode: currentRoomCode,
-            meetingTitle: titleToSave,
-            participants,
-            candidates,
-          }),
-        }).catch(error => console.error('저장 실패:', error));
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [participants, candidates, meetingTitle, currentRoomCode, isLoadingData, isTemporaryMode]);
+  // 임시 모드 진입
+  const handleTemporaryMode = () => {
+    roomState.enterTemporaryMode();
+    participantsState.clearParticipants();
+    candidatesState.clearCandidates();
+    setCurrentStep(1);
+  };
 
   // 다음 단계로
   const handleNext = () => {
-    if (currentStep === 1 && participants.length === 0) {
+    if (currentStep === 1 && participantsState.participants.length === 0) {
       showAlert('최소 1명의 참여자를 추가해주세요!', { variant: 'warning' });
       return;
     }
-    if (currentStep === 2 && candidates.length === 0) {
+    if (currentStep === 2 && candidatesState.candidates.length === 0) {
       showAlert('최소 1개의 후보 장소를 추가해주세요!', { variant: 'warning' });
       return;
     }
@@ -205,21 +113,12 @@ export default function Home() {
     <div className="min-h-screen pb-20">
       {/* 방 목록 다이얼로그 */}
       <RoomListDialog
-        open={showRoomDialog}
-        onOpenChange={setShowRoomDialog}
+        open={roomState.showRoomDialog}
+        onOpenChange={roomState.setShowRoomDialog}
         onRoomEnter={handleRoomEnter}
         onRoomCreate={handleRoomCreate}
-        currentRoomCode={currentRoomCode}
-        onTemporaryMode={() => {
-          setIsTemporaryMode(true);
-          setMeetingTitle('임시 테스트');
-          setCurrentRoomCode(null);
-          setParticipants([]);
-          setCandidates([]);
-          setSelectedLocationId(null);
-          setCurrentStep(1);
-          setShowRoomDialog(false);
-        }}
+        currentRoomCode={roomState.currentRoomCode}
+        onTemporaryMode={handleTemporaryMode}
       />
 
       <div className="max-w-4xl mx-auto px-4 py-6 md:py-8">
@@ -234,7 +133,7 @@ export default function Home() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setShowRoomDialog(true)}
+              onClick={() => roomState.setShowRoomDialog(true)}
               className="hover:bg-primary/10"
             >
               <List className="h-5 w-5" />
@@ -254,19 +153,19 @@ export default function Home() {
           <p className="text-base md:text-xl text-muted-foreground mb-2">
             모두에게 공평한 만남의 장소 찾기
           </p>
-          {isTemporaryMode && (
+          {roomState.isTemporaryMode && (
             <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-orange-500/10 border-2 border-orange-500/30 rounded-full">
               <TestTube className="h-4 w-4 text-orange-500" />
               <span className="text-sm font-bold text-orange-500">임시 모드 (저장되지 않음)</span>
             </div>
           )}
-          {currentRoomCode && !isTemporaryMode && (
+          {roomState.currentRoomCode && !roomState.isTemporaryMode && (
             <div className="inline-flex items-center gap-3 mt-3 px-4 py-2 bg-accent rounded-full border">
-              <span className="text-sm font-semibold text-foreground">{meetingTitle}</span>
+              <span className="text-sm font-semibold text-foreground">{roomState.meetingTitle}</span>
               <div className="h-4 w-px bg-border"></div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">방 코드:</span>
-                <span className="font-bold text-primary">{currentRoomCode}</span>
+                <span className="font-bold text-primary">{roomState.currentRoomCode}</span>
               </div>
             </div>
           )}
@@ -330,14 +229,11 @@ export default function Home() {
               transition={{ duration: 0.3 }}
             >
               <ParticipantManager
-                participants={participants}
-                onParticipantsChange={setParticipants}
-                candidatesCount={candidates.length}
-                onClearCandidates={() => {
-                  setCandidates([]);
-                  setSelectedLocationId(null);
-                }}
-                onRefresh={handleRefreshRoom}
+                participants={participantsState.participants}
+                onParticipantsChange={participantsState.setParticipants}
+                candidatesCount={candidatesState.candidates.length}
+                onClearCandidates={candidatesState.clearCandidates}
+                onRefresh={roomData.refreshRoom}
               />
             </motion.div>
           )}
@@ -351,14 +247,14 @@ export default function Home() {
               transition={{ duration: 0.3 }}
             >
               <LocationManager
-                participants={participants}
-                candidates={candidates}
-                onCandidatesChange={setCandidates}
-                selectedLocationId={selectedLocationId}
-                onLocationSelect={setSelectedLocationId}
+                participants={participantsState.participants}
+                candidates={candidatesState.candidates}
+                onCandidatesChange={candidatesState.setCandidates}
+                selectedLocationId={candidatesState.selectedLocationId}
+                onLocationSelect={candidatesState.setSelectedLocationId}
                 departureTime={departureTime}
                 onDepartureTimeChange={setDepartureTime}
-                onRefresh={handleRefreshRoom}
+                onRefresh={roomData.refreshRoom}
               />
             </motion.div>
           )}
@@ -373,7 +269,7 @@ export default function Home() {
             >
               <div className="space-y-6">
                 {/* 뷰 전환 토글 버튼 */}
-                {candidates.length > 0 && participants.length > 0 && (
+                {candidatesState.candidates.length > 0 && participantsState.participants.length > 0 && (
                   <div className="flex justify-center">
                     <div className="inline-flex rounded-lg border bg-muted p-1">
                       <button
@@ -410,14 +306,14 @@ export default function Home() {
                     transition={{ duration: 0.3 }}
                   >
                     <ResultsDisplay
-                      candidates={candidates}
-                      selectedLocationId={selectedLocationId}
+                      candidates={candidatesState.candidates}
+                      selectedLocationId={candidatesState.selectedLocationId}
                     />
                   </motion.div>
                 )}
                 
                 {/* 개인별 분석 뷰 */}
-                {resultView === 'individual' && candidates.length > 0 && participants.length > 0 && (
+                {resultView === 'individual' && candidatesState.candidates.length > 0 && participantsState.participants.length > 0 && (
                   <motion.div
                     key="individual"
                     initial={{ opacity: 0, y: 20 }}
@@ -426,14 +322,14 @@ export default function Home() {
                     transition={{ duration: 0.3 }}
                   >
                     <ParticipantAnalysis
-                      participants={participants}
-                      candidates={candidates}
+                      participants={participantsState.participants}
+                      candidates={candidatesState.candidates}
                     />
                   </motion.div>
                 )}
                 
                 {/* 공유 버튼 */}
-                {candidates.length > 0 && (
+                {candidatesState.candidates.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -441,9 +337,9 @@ export default function Home() {
                     className="flex justify-center"
                   >
                     <ShareDialog
-                      meetingTitle={meetingTitle}
-                      participants={participants}
-                      candidates={candidates}
+                      meetingTitle={roomState.meetingTitle}
+                      participants={participantsState.participants}
+                      candidates={candidatesState.candidates}
                     />
                   </motion.div>
                 )}
