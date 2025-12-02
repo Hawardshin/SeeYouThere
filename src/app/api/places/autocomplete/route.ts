@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://see-you-there.vercel.app';
+    
     // Text Search (New) API 사용 - 더 정확한 장소 검색
     const response = await fetch(
       'https://places.googleapis.com/v1/places:searchText',
@@ -23,7 +25,8 @@ export async function GET(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location',
+          'Referer': siteUrl,
         },
         body: JSON.stringify({
           textQuery: input,

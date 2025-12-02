@@ -165,7 +165,9 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition,travelAdvisory.transitFare'
+        'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition,travelAdvisory.transitFare',
+        // 서버 사이드 요청에서 Referer 헤더 추가 (HTTP 리퍼러 제한 우회)
+        'Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://see-you-there.vercel.app',
       },
       body: JSON.stringify(requestBody)
     });

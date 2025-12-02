@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://see-you-there.vercel.app';
+    
     // Place Details (New) API 사용
     const fullPlaceId = placeId.startsWith('places/') ? placeId : `places/${placeId}`;
     
@@ -26,7 +28,8 @@ export async function GET(request: NextRequest) {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': apiKey,
           'X-Goog-FieldMask': 'id,displayName,formattedAddress,location',
-          'Accept-Language': 'ko-KR' // 한국어 우선
+          'Accept-Language': 'ko-KR', // 한국어 우선
+          'Referer': siteUrl,
         }
       }
     );

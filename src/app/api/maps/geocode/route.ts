@@ -15,8 +15,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://see-you-there.vercel.app';
+    
     const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}&language=ko&region=kr`
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}&language=ko&region=kr`,
+      {
+        headers: {
+          'Referer': siteUrl,
+        }
+      }
     );
 
     if (!response.ok) {
