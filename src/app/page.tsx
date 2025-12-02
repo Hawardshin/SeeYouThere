@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import ParticipantManager from '@/components/ParticipantManager';
 import LocationManager from '@/components/LocationManager';
@@ -11,7 +12,7 @@ import RoomListDialog from '@/components/RoomListDialog';
 import ThemeToggle from '@/components/ThemeToggle';
 import AlertModal, { useAlertModal } from '@/components/AlertModal';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List, TestTube, Check, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List, TestTube, Check, AlertCircle, Loader2, RefreshCw, Share2 } from 'lucide-react';
 import { useRoomState } from '@/hooks/useRoomState';
 import { useParticipants } from '@/hooks/useParticipants';
 import { useCandidates } from '@/hooks/useCandidates';
@@ -55,11 +56,14 @@ export default function Home() {
   const roomState = useRoomState();
   const participantsState = useParticipants();
   const candidatesState = useCandidates();
+  const searchParams = useSearchParams();
   
   const { alertState, showAlert, closeAlert } = useAlertModal();
   const [departureTime, setDepartureTime] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
   const [resultView, setResultView] = useState<'overview' | 'individual'>('overview');
+  const [isJoiningFromUrl, setIsJoiningFromUrl] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   // Room Data Hook
   const roomData = useRoomData({
@@ -92,6 +96,75 @@ export default function Home() {
       roomData.loadRoomData(roomState.currentRoomCode);
     }
   }, [roomState.isInitialized, roomState.currentRoomCode, roomState.isTemporaryMode]);
+
+  // URL 쿼리 파라미터로 방 자동 입장 (?room=XXXX&step=3)
+  useEffect(() => {
+    const roomCode = searchParams.get('room');
+    const stepParam = searchParams.get('step');
+    
+    if (roomCode && roomState.isInitialized && !isJoiningFromUrl) {
+      // 이미 해당 방에 있으면 스텝만 변경
+      if (roomState.currentRoomCode === roomCode) {
+        if (stepParam) {
+          const step = parseInt(stepParam);
+          if (step >= 1 && step <= 3) {
+            setCurrentStep(step);
+          }
+        }
+        // URL에서 쿼리 파라미터 제거 (깔끔하게)
+        window.history.replaceState({}, '', '/');
+        return;
+      }
+      
+      // 다른 방이면 자동 입장 시도
+      setIsJoiningFromUrl(true);
+      console.log('🔗 URL에서 방 코드 감지:', roomCode);
+      
+      (async () => {
+        try {
+          const response = await fetch(`/api/rooms?roomCode=${roomCode}`);
+          const data = await response.json();
+          
+          if (data.success) {
+            // 비밀번호가 없는 방이면 자동 입장
+            if (!data.data.hasPassword) {
+              roomState.enterRoom(roomCode, data.data.meetingTitle || '공유된 모임');
+              participantsState.setParticipants(data.data.participants || []);
+              candidatesState.setCandidates(data.data.candidates || []);
+              
+              // step 파라미터가 있으면 해당 스텝으로 이동
+              if (stepParam) {
+                const step = parseInt(stepParam);
+                if (step >= 1 && step <= 3) {
+                  setCurrentStep(step);
+                }
+              } else if (data.data.candidates?.length > 0) {
+                // 후보지가 있으면 결과 페이지로
+                setCurrentStep(3);
+              }
+              
+              showAlert(`"${data.data.meetingTitle || roomCode}" 방에 입장했습니다!`, { variant: 'success' });
+            } else {
+              // 비밀번호가 있는 방이면 방 목록 다이얼로그 열기
+              showAlert('비밀번호가 설정된 방입니다. 방 목록에서 입장해주세요.', { variant: 'warning' });
+              roomState.setShowRoomDialog(true);
+            }
+          } else {
+            showAlert('존재하지 않는 방입니다.', { variant: 'error' });
+            roomState.enterTemporaryMode();
+          }
+        } catch (error) {
+          console.error('방 입장 실패:', error);
+          showAlert('방 입장에 실패했습니다.', { variant: 'error' });
+          roomState.enterTemporaryMode();
+        } finally {
+          // URL에서 쿼리 파라미터 제거
+          window.history.replaceState({}, '', '/');
+          setIsJoiningFromUrl(false);
+        }
+      })();
+    }
+  }, [searchParams, roomState.isInitialized, isJoiningFromUrl]);
 
   // 방 생성 핸들러
   const handleRoomCreate = async (roomCode: string, roomTitle: string, password?: string) => {
@@ -405,18 +478,20 @@ export default function Home() {
                 )}
                 
                 {/* 공유 버튼 */}
-                {candidatesState.candidates.length > 0 && (
+                {candidatesState.candidates.length > 0 && roomState.currentRoomCode && !roomState.isTemporaryMode && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                     className="flex justify-center"
                   >
-                    <ShareDialog
-                      meetingTitle={roomState.meetingTitle}
-                      participants={participantsState.participants}
-                      candidates={candidatesState.candidates}
-                    />
+                    <Button
+                      onClick={() => setShowShareDialog(true)}
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                    >
+                      <Share2 className="h-4 w-4 mr-2" />
+                      결과 공유하기
+                    </Button>
                   </motion.div>
                 )}
               </div>
@@ -489,6 +564,16 @@ export default function Home() {
         title={alertState.title}
         message={alertState.message}
         variant={alertState.variant}
+      />
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        roomCode={roomState.currentRoomCode || ''}
+        meetingTitle={roomState.meetingTitle || '모임 장소 찾기'}
+        participants={participantsState.participants}
+        candidates={candidatesState.candidates}
       />
     </div>
   );
