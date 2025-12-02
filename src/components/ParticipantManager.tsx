@@ -312,7 +312,7 @@ export default function ParticipantManager({
             <Users className="h-4 w-4 text-primary" />
             참여자 목록 ({participants.length}명)
           </h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
+          <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
             {participants.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed rounded-xl bg-muted/30">
                 <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
@@ -320,46 +320,54 @@ export default function ParticipantManager({
                 <p className="text-xs text-muted-foreground/70 mt-1">위에서 첫 참여자를 추가해보세요!</p>
               </div>
             ) : (
-              participants.map((participant) => (
+              participants.map((participant, index) => (
                 <div
                   key={participant.id}
-                  className="group relative p-4 bg-card rounded-lg border hover:border-primary transition-all hover:shadow-sm"
+                  className="group relative p-4 bg-gradient-to-br from-card to-muted/30 rounded-xl border hover:border-primary/50 transition-all hover:shadow-md"
                 >
-                  <div className="relative flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    {/* 프로필 아바타 */}
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-md ${
+                      ['bg-gradient-to-br from-violet-500 to-purple-600',
+                       'bg-gradient-to-br from-blue-500 to-cyan-600',
+                       'bg-gradient-to-br from-emerald-500 to-teal-600',
+                       'bg-gradient-to-br from-orange-500 to-amber-600',
+                       'bg-gradient-to-br from-pink-500 to-rose-600',
+                       'bg-gradient-to-br from-indigo-500 to-blue-600'][index % 6]
+                    }`}>
+                      {participant.name.charAt(0).toUpperCase()}
+                    </div>
+                    
+                    {/* 참여자 정보 */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="default" className="font-semibold">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-foreground text-base">
                           {participant.name}
-                        </Badge>
+                        </span>
                         <button
                           onClick={() => handleToggleTransportMode(participant.id)}
                           title="클릭하여 이동수단 변경"
-                          className={`px-2 py-1 text-xs font-medium rounded-md border transition-all hover:scale-105 ${
+                          className={`px-2 py-0.5 text-xs font-medium rounded-full border transition-all hover:scale-105 ${
                             participant.transportMode === 'car' 
-                              ? 'border-blue-500/50 text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900' 
-                              : 'border-primary/50 text-primary bg-primary/5 hover:bg-primary/10'
+                              ? 'border-blue-400 text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400 hover:bg-blue-100' 
+                              : 'border-green-400 text-green-600 bg-green-50 dark:bg-green-950/50 dark:text-green-400 hover:bg-green-100'
                           }`}
                         >
-                          {participant.transportMode === 'car' ? (
-                            <>🚗 자동차</>
-                          ) : (
-                            <>
-                              <Bus className="h-3 w-3 inline mr-1" />
-                              대중교통
-                            </>
-                          )}
+                          {participant.transportMode === 'car' ? '🚗 자동차' : '🚇 대중교통'}
                         </button>
                       </div>
-                      <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
-                        <MapPin className="h-3 w-3 flex-shrink-0" />
-                        {participant.startLocation}
-                      </p>
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary/70" />
+                        <span className="truncate">{participant.startLocation}</span>
+                      </div>
                     </div>
+                    
+                    {/* 삭제 버튼 */}
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={() => handleRemoveParticipant(participant.id)}
-                      className="text-destructive hover:text-destructive/80 ml-2"
+                      className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

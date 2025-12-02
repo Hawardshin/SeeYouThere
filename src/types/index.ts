@@ -28,6 +28,7 @@ export interface TravelTime {
   participantName: string;
   duration: number; // 분 단위
   distance?: number; // 미터 단위
+  isEstimated?: boolean; // 추정치 여부 (API 실패 시 직선거리 기반 추정)
 }
 
 // 장소별 통계

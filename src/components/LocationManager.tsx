@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { MapPin, Plus, Clock, Trash2, Loader2, Star, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getTravelTime } from '@/lib/mapApi';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { MapPin, Plus, Clock, Trash2, Loader2, Star, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { getTravelTime, MapApiError } from '@/lib/mapApi';
 import AddressSearch from './AddressSearch';
 import SubwayStationPicker from './SubwayStationPicker';
 import { popularLocations } from '@/data/popularLocations';
@@ -39,6 +40,11 @@ export default function LocationManager({
   const [locationAddress, setLocationAddress] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
   const [isCalculating, setIsCalculating] = useState(false);
+  const [apiErrorModal, setApiErrorModal] = useState<{ 
+    open: boolean; 
+    message: string; 
+    retryFn: (() => void) | null 
+  }>({ open: false, message: '', retryFn: null });
   const { alertState, showAlert, closeAlert } = useAlertModal();
   
   // 목표지 선택 방법 탭
@@ -75,6 +81,7 @@ export default function LocationManager({
           participantName: participant.name,
           duration: result.duration,
           distance: result.distance,
+          isEstimated: result.isEstimated,
         });
       }
 
@@ -92,7 +99,17 @@ export default function LocationManager({
       setPreviewPopularLocation(null);
     } catch (error) {
       console.error('Error calculating travel times:', error);
-      showAlert('경로 계산 중 오류가 발생했습니다.', { variant: 'error' });
+      
+      // MapApiError인 경우 모달로 재시도 가능한 에러 표시
+      if (error instanceof MapApiError && error.retryable) {
+        setApiErrorModal({
+          open: true,
+          message: error.message,
+          retryFn: () => addCandidateLocation(name, address, coords)
+        });
+      } else {
+        showAlert('경로 계산 중 오류가 발생했습니다.', { variant: 'error' });
+      }
     } finally {
       setIsCalculating(false);
     }
@@ -396,6 +413,7 @@ export default function LocationManager({
               const avgTime = candidate.travelTimes.reduce((sum, t) => sum + t.duration, 0) / candidate.travelTimes.length;
               const maxTime = Math.max(...candidate.travelTimes.map(t => t.duration));
               const totalTime = candidate.travelTimes.reduce((sum, t) => sum + t.duration, 0);
+              const hasEstimated = candidate.travelTimes.some(t => t.isEstimated);
               
               return (
                 <Card
@@ -410,7 +428,14 @@ export default function LocationManager({
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <div className="font-semibold text-lg mb-1">{candidate.name}</div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-lg">{candidate.name}</span>
+                          {hasEstimated && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-full">
+                              ⚠️ 일부 추정치
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">
                           {candidate.address}
                         </div>
@@ -445,33 +470,64 @@ export default function LocationManager({
                     <div className="space-y-2">
                       {[...candidate.travelTimes]
                         .sort((a, b) => a.duration - b.duration)
-                        .map((time) => {
+                        .map((time, index) => {
                           const participant = participants.find(p => p.id === time.participantId);
                           return (
                             <div
                               key={time.participantId}
-                              className="flex items-center justify-between text-sm p-2 bg-white dark:bg-gray-800 rounded"
+                              className="flex items-center gap-3 text-sm p-3 bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700"
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{time.participantName}</span>
+                              {/* 미니 프로필 아바타 */}
+                              <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ${
+                                ['bg-gradient-to-br from-violet-500 to-purple-600',
+                                 'bg-gradient-to-br from-blue-500 to-cyan-600',
+                                 'bg-gradient-to-br from-emerald-500 to-teal-600',
+                                 'bg-gradient-to-br from-orange-500 to-amber-600',
+                                 'bg-gradient-to-br from-pink-500 to-rose-600',
+                                 'bg-gradient-to-br from-indigo-500 to-blue-600'][participants.findIndex(p => p.id === time.participantId) % 6]
+                              }`}>
+                                {time.participantName.charAt(0).toUpperCase()}
+                              </div>
+                              
+                              {/* 참여자 정보 */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-foreground">{time.participantName}</span>
+                                  {participant && (
+                                    <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${
+                                      participant.transportMode === 'car' 
+                                        ? 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400' 
+                                        : 'bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400'
+                                    }`}>
+                                      {participant.transportMode === 'car' ? '🚗' : '🚇'}
+                                    </span>
+                                  )}
+                                </div>
                                 {participant && (
-                                  <Badge variant="outline" className={`text-xs ${
-                                    participant.transportMode === 'car' 
-                                      ? 'border-blue-500/50 text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400' 
-                                      : 'border-green-500/50 text-green-600 bg-green-50 dark:bg-green-950 dark:text-green-400'
-                                  }`}>
-                                    {participant.transportMode === 'car' ? '차량' : '대중교통'}
-                                  </Badge>
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{participant.startLocation}</span>
+                                  </div>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  {time.duration}분
-                                </Badge>
-                                <span className="text-gray-500 dark:text-gray-400">
+                              
+                              {/* 소요 시간 */}
+                              <div className="flex-shrink-0 text-right">
+                                <div className={`flex items-center gap-1 font-semibold ${
+                                  time.isEstimated 
+                                    ? 'text-amber-600 dark:text-amber-400' 
+                                    : 'text-foreground'
+                                }`}>
+                                  <Clock className={`w-3.5 h-3.5 ${time.isEstimated ? 'text-amber-500' : 'text-primary'}`} />
+                                  {time.isEstimated ? '~' : ''}{time.duration}분
+                                  {time.isEstimated && (
+                                    <span className="text-[10px] text-amber-500" title="API 오류로 직선거리 기반 추정치입니다">⚠️</span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
                                   {time.distance ? (time.distance / 1000).toFixed(1) : '?'}km
-                                </span>
+                                  {time.isEstimated && <span className="ml-1 text-amber-500">(추정)</span>}
+                                </div>
                               </div>
                             </div>
                           );
@@ -493,6 +549,46 @@ export default function LocationManager({
         message={alertState.message}
         variant={alertState.variant}
       />
+
+      {/* API 에러 모달 */}
+      <Dialog open={apiErrorModal.open} onOpenChange={(open) => !open && setApiErrorModal(prev => ({ ...prev, open: false }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <span className="text-3xl">😢</span>
+              API가 잠깐 쉬고 있어요
+            </DialogTitle>
+            <DialogDescription className="text-base pt-2">
+              {apiErrorModal.message}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+            <div className="text-amber-600 dark:text-amber-400 text-sm">
+              💡 걱정마세요! 다시 시도하면 대부분 해결됩니다.
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setApiErrorModal(prev => ({ ...prev, open: false }))}
+            >
+              닫기
+            </Button>
+            {apiErrorModal.retryFn && (
+              <Button
+                onClick={() => {
+                  setApiErrorModal(prev => ({ ...prev, open: false }));
+                  apiErrorModal.retryFn?.();
+                }}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                다시 시도
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

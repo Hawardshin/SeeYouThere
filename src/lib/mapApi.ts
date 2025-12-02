@@ -128,6 +128,18 @@ export async function geocodeAddress(address: string): Promise<Coordinates | nul
   }
 }
 
+// API 에러 타입 정의
+export class MapApiError extends Error {
+  constructor(
+    message: string,
+    public code: 'API_BLOCKED' | 'NETWORK_ERROR' | 'RATE_LIMIT' | 'UNKNOWN',
+    public retryable: boolean = true
+  ) {
+    super(message);
+    this.name = 'MapApiError';
+  }
+}
+
 // Google Routes API v2 - 대중교통 소요시간 계산 (서버 API Route 사용)
 // 항상 대중교통(버스+지하철+걷기) 경로 중 가장 빠른 경로를 제공
 export async function getTravelTime(
@@ -135,7 +147,7 @@ export async function getTravelTime(
   destination: Coordinates,
   mode: 'DRIVE' | 'TRANSIT' | 'WALK' | 'BICYCLE' | 'TWO_WHEELER' = 'TRANSIT',
   departureTime?: string // HH:mm 형식의 시간
-): Promise<{ duration: number; distance: number }> {
+): Promise<{ duration: number; distance: number; isEstimated?: boolean }> {
   try {
     // 좌표 유효성 검사
     if (!origin || !destination ||
@@ -192,6 +204,24 @@ export async function getTravelTime(
       const errorData = await response.json();
       console.error('Routes API v2 오류:', errorData);
       
+      // 403 에러 (API 키 제한) 처리
+      if (response.status === 403) {
+        throw new MapApiError(
+          'API가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해주세요.',
+          'API_BLOCKED',
+          true
+        );
+      }
+      
+      // 429 에러 (Rate Limit) 처리
+      if (response.status === 429) {
+        throw new MapApiError(
+          '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+          'RATE_LIMIT',
+          true
+        );
+      }
+      
       // TRANSIT 모드 실패 시 DRIVE로 재시도
       if (mode === 'TRANSIT') {
         console.warn('⚠️ 대중교통 경로 실패, 자동차 경로로 재시도...');
@@ -224,10 +254,20 @@ export async function getTravelTime(
             }
           }
         }
+        
+        // fallback도 403이면 에러 throw
+        if (fallbackResponse.status === 403) {
+          throw new MapApiError(
+            'API가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해주세요.',
+            'API_BLOCKED',
+            true
+          );
+        }
       }
       
       console.warn('⚠️ API 실패, 직선 거리 기반 추정치 사용');
-      return calculateDummyTravelTime(origin, destination);
+      const estimated = calculateDummyTravelTime(origin, destination);
+      return { ...estimated, isEstimated: true };
     }
 
     const data = await response.json();
@@ -288,10 +328,16 @@ export async function getTravelTime(
 
     // 모든 시도 실패 시 더미 데이터
     console.warn('⚠️ 모든 경로 탐색 실패, 직선 거리 기반 추정치 사용');
-    return calculateDummyTravelTime(origin, destination);
+    const estimated = calculateDummyTravelTime(origin, destination);
+    return { ...estimated, isEstimated: true };
   } catch (error) {
+    // MapApiError는 다시 throw (UI에서 처리)
+    if (error instanceof MapApiError) {
+      throw error;
+    }
     console.error('❌ 거리/시간 계산 오류:', error);
-    return calculateDummyTravelTime(origin, destination);
+    const estimated = calculateDummyTravelTime(origin, destination);
+    return { ...estimated, isEstimated: true };
   }
 }
 
