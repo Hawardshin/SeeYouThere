@@ -11,14 +11,14 @@ import RoomListDialog from '@/components/RoomListDialog';
 import ThemeToggle from '@/components/ThemeToggle';
 import AlertModal, { useAlertModal } from '@/components/AlertModal';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List, TestTube, Save, Check, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Users, MapPin, Sparkles, List, TestTube, Check, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { useRoomState } from '@/hooks/useRoomState';
 import { useParticipants } from '@/hooks/useParticipants';
 import { useCandidates } from '@/hooks/useCandidates';
 import { useRoomData, SaveStatus } from '@/hooks/useRoomData';
 
-// 저장 상태 표시 컴포넌트
-function SaveStatusIndicator({ status, hasUnsavedChanges }: { status: SaveStatus; hasUnsavedChanges: boolean }) {
+// 저장 상태 표시 컴포넌트 (간소화 - 저장 중/완료/에러만 표시)
+function SaveStatusIndicator({ status }: { status: SaveStatus }) {
   if (status === 'saving') {
     return (
       <div className="flex items-center gap-1 text-xs text-blue-500">
@@ -46,17 +46,9 @@ function SaveStatusIndicator({ status, hasUnsavedChanges }: { status: SaveStatus
     );
   }
   
-  if (hasUnsavedChanges || status === 'unsaved') {
-    return (
-      <div className="flex items-center gap-1 text-xs text-orange-500">
-        <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
-        <span>저장 필요</span>
-      </div>
-    );
-  }
-  
   return null;
 }
+
 
 export default function Home() {
   // Custom Hooks
@@ -93,19 +85,13 @@ export default function Home() {
     }
   }, [departureTime]);
 
-  // 페이지 떠날 때 저장 안된 변경사항 경고
+  // 새로고침 시 방 데이터 자동 로드
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (roomData.hasUnsavedChanges && roomState.currentRoomCode && !roomState.isTemporaryMode) {
-        e.preventDefault();
-        e.returnValue = '저장되지 않은 변경사항이 있습니다. 정말 나가시겠습니까?';
-        return e.returnValue;
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [roomData.hasUnsavedChanges, roomState.currentRoomCode, roomState.isTemporaryMode]);
+    if (roomState.isInitialized && roomState.currentRoomCode && !roomState.isTemporaryMode) {
+      console.log('🔄 새로고침 감지, 방 데이터 로드:', roomState.currentRoomCode);
+      roomData.loadRoomData(roomState.currentRoomCode);
+    }
+  }, [roomState.isInitialized, roomState.currentRoomCode, roomState.isTemporaryMode]);
 
   // 방 생성 핸들러
   const handleRoomCreate = async (roomCode: string, roomTitle: string, password?: string) => {
@@ -138,10 +124,6 @@ export default function Home() {
 
   // 임시 모드 진입
   const handleTemporaryMode = () => {
-    if (roomData.hasUnsavedChanges) {
-      const confirm = window.confirm('저장되지 않은 변경사항이 있습니다. 정말 나가시겠습니까?');
-      if (!confirm) return;
-    }
     roomState.enterTemporaryMode();
     participantsState.clearParticipants();
     candidatesState.clearCandidates();
@@ -150,10 +132,6 @@ export default function Home() {
 
   // 방 입장 전 확인
   const handleRoomEnterWithConfirm = async (roomCode: string, password?: string) => {
-    if (roomData.hasUnsavedChanges && roomState.currentRoomCode !== roomCode) {
-      const confirm = window.confirm('저장되지 않은 변경사항이 있습니다. 다른 방으로 이동하시겠습니까?');
-      if (!confirm) return false;
-    }
     return handleRoomEnter(roomCode, password);
   };
 
@@ -176,6 +154,25 @@ export default function Home() {
     { number: 2, title: '장소', icon: MapPin, desc: '어디서 만날까요?' },
     { number: 3, title: '결과', icon: Sparkles, desc: '최적의 장소는?' },
   ];
+
+  // 초기화 중이거나 데이터 로딩 중일 때 로딩 표시
+  if (!roomState.isInitialized || (roomState.currentRoomCode && roomData.isLoadingData)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-foreground">잠시만 기다려주세요</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {roomState.currentRoomCode ? '방 데이터를 불러오는 중...' : '초기화 중...'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20">
@@ -236,7 +233,7 @@ export default function Home() {
                 <span className="font-bold text-primary">{roomState.currentRoomCode}</span>
               </div>
               {/* 저장 상태 표시 */}
-              <SaveStatusIndicator status={roomData.saveStatus} hasUnsavedChanges={roomData.hasUnsavedChanges} />
+              <SaveStatusIndicator status={roomData.saveStatus} />
             </div>
           )}
         </motion.div>
@@ -300,9 +297,11 @@ export default function Home() {
             >
               <ParticipantManager
                 participants={participantsState.participants}
-                onParticipantsChange={participantsState.setParticipants}
+                onAddParticipant={roomData.addParticipant}
+                onRemoveParticipant={roomData.removeParticipant}
+                onUpdateParticipant={roomData.updateParticipant}
                 candidatesCount={candidatesState.candidates.length}
-                onClearCandidates={candidatesState.clearCandidates}
+                onClearCandidates={roomData.clearCandidates}
               />
             </motion.div>
           )}
@@ -318,7 +317,8 @@ export default function Home() {
               <LocationManager
                 participants={participantsState.participants}
                 candidates={candidatesState.candidates}
-                onCandidatesChange={candidatesState.setCandidates}
+                onAddCandidate={roomData.addCandidate}
+                onRemoveCandidate={roomData.removeCandidate}
                 selectedLocationId={candidatesState.selectedLocationId}
                 onLocationSelect={candidatesState.setSelectedLocationId}
                 departureTime={departureTime}
@@ -435,48 +435,11 @@ export default function Home() {
                 <span className="hidden sm:inline ml-1">이전</span>
               </Button>
             )}
-            
-            {/* 저장 버튼 - 방이 있고 임시모드가 아닐 때만 표시 */}
-            {roomState.currentRoomCode && !roomState.isTemporaryMode && (
-              <Button
-                onClick={async () => {
-                  const success = await roomData.saveRoom();
-                  if (success) {
-                    showAlert('저장되었습니다!', { variant: 'success' });
-                  } else {
-                    showAlert('저장에 실패했습니다. 다시 시도해주세요.', { variant: 'error' });
-                  }
-                }}
-                variant="outline"
-                disabled={roomData.saveStatus === 'saving'}
-                className={`flex-none py-6 px-4 transition-all ${
-                  roomData.hasUnsavedChanges 
-                    ? 'border-orange-500 text-orange-500 bg-orange-500/10 hover:bg-orange-500/20' 
-                    : 'bg-white/5 border-white/20 hover:bg-white/10'
-                }`}
-              >
-                {roomData.saveStatus === 'saving' ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : roomData.saveStatus === 'saved' ? (
-                  <Check className="h-5 w-5 text-green-500" />
-                ) : (
-                  <Save className="h-5 w-5" />
-                )}
-                <span className="hidden sm:inline ml-1">
-                  {roomData.saveStatus === 'saving' ? '저장 중...' : 
-                   roomData.saveStatus === 'saved' ? '저장됨' : '저장'}
-                </span>
-              </Button>
-            )}
 
             {/* 새로고침 버튼 - 방이 있고 임시모드가 아닐 때만 표시 */}
             {roomState.currentRoomCode && !roomState.isTemporaryMode && (
               <Button
                 onClick={async () => {
-                  if (roomData.hasUnsavedChanges) {
-                    const confirm = window.confirm('저장되지 않은 변경사항이 있습니다. 새로고침하면 사라집니다. 계속하시겠습니까?');
-                    if (!confirm) return;
-                  }
                   await roomData.refreshRoom();
                   showAlert('새로고침 완료!', { variant: 'success' });
                 }}

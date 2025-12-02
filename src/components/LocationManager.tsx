@@ -18,7 +18,8 @@ import AlertModal, { useAlertModal } from './AlertModal';
 interface LocationManagerProps {
   participants: Participant[];
   candidates: CandidateLocation[];
-  onCandidatesChange: (candidates: CandidateLocation[]) => void;
+  onAddCandidate: (candidate: CandidateLocation) => Promise<boolean>;
+  onRemoveCandidate: (id: string) => Promise<boolean>;
   selectedLocationId: string | null;
   onLocationSelect: (id: string | null) => void;
   departureTime: string;
@@ -28,7 +29,8 @@ interface LocationManagerProps {
 export default function LocationManager({
   participants,
   candidates,
-  onCandidatesChange,
+  onAddCandidate,
+  onRemoveCandidate,
   selectedLocationId,
   onLocationSelect,
   departureTime,
@@ -84,7 +86,7 @@ export default function LocationManager({
         travelTimes,
       };
 
-      onCandidatesChange([...candidates, newCandidate]);
+      await onAddCandidate(newCandidate);
       setLocationAddress('');
       setCoordinates(undefined);
       setPreviewPopularLocation(null);
@@ -124,9 +126,8 @@ export default function LocationManager({
     await addCandidateLocation(`${station.name}역`, `${station.name}역 (${station.line})`, station.coordinates);
   };
 
-  const handleDeleteCandidate = (id: string) => {
-    const updated = candidates.filter(c => c.id !== id);
-    onCandidatesChange(updated);
+  const handleDeleteCandidate = async (id: string) => {
+    await onRemoveCandidate(id);
     if (selectedLocationId === id) {
       onLocationSelect(null);
     }

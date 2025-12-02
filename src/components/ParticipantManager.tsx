@@ -13,14 +13,18 @@ import AlertModal, { useAlertModal } from './AlertModal';
 
 interface ParticipantManagerProps {
   participants: Participant[];
-  onParticipantsChange: (participants: Participant[]) => void;
+  onAddParticipant: (participant: Participant) => Promise<boolean>;
+  onRemoveParticipant: (id: string) => Promise<boolean>;
+  onUpdateParticipant: (id: string, updates: Partial<Participant>) => Promise<boolean>;
   candidatesCount?: number;
-  onClearCandidates?: () => void;
+  onClearCandidates?: () => Promise<boolean>;
 }
 
 export default function ParticipantManager({ 
   participants, 
-  onParticipantsChange,
+  onAddParticipant,
+  onRemoveParticipant,
+  onUpdateParticipant,
   candidatesCount = 0,
   onClearCandidates,
 }: ParticipantManagerProps) {
@@ -33,7 +37,7 @@ export default function ParticipantManager({
   // 출발지 선택 방법 탭
   const [startLocationTab, setStartLocationTab] = useState<'search' | 'subway'>('subway');
 
-  const handleAddParticipant = () => {
+  const handleAddParticipant = async () => {
     if (!name.trim() || !startLocation.trim()) {
       showAlert('이름과 출발지를 모두 입력해주세요.', { variant: 'warning' });
       return;
@@ -49,7 +53,7 @@ export default function ParticipantManager({
         `⚠️ 인원 추가 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
       );
       if (!confirmClear) return;
-      onClearCandidates();
+      await onClearCandidates();
     }
 
     const newParticipant: Participant = {
@@ -60,13 +64,13 @@ export default function ParticipantManager({
       transportMode,
     };
 
-    onParticipantsChange([...participants, newParticipant]);
+    await onAddParticipant(newParticipant);
     setName('');
     setStartLocation('');
     setCoordinates(undefined);
   };
 
-  const handleAddParticipantWithSubway = (stationId: string) => {
+  const handleAddParticipantWithSubway = async (stationId: string) => {
     if (!name.trim()) {
       showAlert('이름을 입력해주세요.', { variant: 'warning' });
       return;
@@ -80,7 +84,7 @@ export default function ParticipantManager({
         `⚠️ 인원 추가 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
       );
       if (!confirmClear) return;
-      onClearCandidates();
+      await onClearCandidates();
     }
 
     const newParticipant: Participant = {
@@ -91,40 +95,38 @@ export default function ParticipantManager({
       transportMode,
     };
 
-    onParticipantsChange([...participants, newParticipant]);
+    await onAddParticipant(newParticipant);
     setName('');
     setStartLocation('');
     setCoordinates(undefined);
   };
 
-  const handleRemoveParticipant = (id: string) => {
+  const handleRemoveParticipant = async (id: string) => {
     if (candidatesCount > 0 && onClearCandidates) {
       const confirmClear = window.confirm(
         `⚠️ 인원 제거 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
       );
       if (!confirmClear) return;
-      onClearCandidates();
+      await onClearCandidates();
     }
     
-    onParticipantsChange(participants.filter(p => p.id !== id));
+    await onRemoveParticipant(id);
   };
 
-  const handleToggleTransportMode = (id: string) => {
+  const handleToggleTransportMode = async (id: string) => {
     if (candidatesCount > 0 && onClearCandidates) {
       const confirmClear = window.confirm(
         `⚠️ 이동수단 변경 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
       );
       if (!confirmClear) return;
-      onClearCandidates();
+      await onClearCandidates();
     }
 
-    onParticipantsChange(
-      participants.map(p => 
-        p.id === id 
-          ? { ...p, transportMode: p.transportMode === 'transit' ? 'car' as const : 'transit' as const }
-          : p
-      )
-    );
+    const participant = participants.find(p => p.id === id);
+    if (participant) {
+      const newMode = participant.transportMode === 'transit' ? 'car' as const : 'transit' as const;
+      await onUpdateParticipant(id, { transportMode: newMode });
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -210,7 +212,7 @@ export default function ParticipantManager({
                     setStartLocation(address);
                     setCoordinates(coords);
                   }}
-                  onConfirm={(address: string, coords: { lat: number; lng: number }) => {
+                  onConfirm={async (address: string, coords: { lat: number; lng: number }) => {
                     // 이름 체크
                     if (!name.trim()) {
                       showAlert('이름을 입력해주세요.', { variant: 'warning' });
@@ -228,7 +230,7 @@ export default function ParticipantManager({
                         `⚠️ 인원 추가 시 목표지점이 전체 초기화됩니다.\n현재 ${candidatesCount}개의 후보지가 삭제됩니다.\n계속하시겠습니까?`
                       );
                       if (!confirmClear) return;
-                      onClearCandidates();
+                      await onClearCandidates();
                     }
 
                     const newParticipant: Participant = {
@@ -239,7 +241,7 @@ export default function ParticipantManager({
                       transportMode,
                     };
 
-                    onParticipantsChange([...participants, newParticipant]);
+                    await onAddParticipant(newParticipant);
                     setName('');
                     setStartLocation('');
                     setCoordinates(undefined);

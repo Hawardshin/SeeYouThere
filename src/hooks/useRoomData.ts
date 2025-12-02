@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Participant, CandidateLocation } from '@/types';
 
 interface UseRoomDataParams {
@@ -14,7 +14,7 @@ interface UseRoomDataParams {
   setMeetingTitle: (title: string) => void;
 }
 
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'unsaved';
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export function useRoomData({
   currentRoomCode,
@@ -28,25 +28,92 @@ export function useRoomData({
 }: UseRoomDataParams) {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  
-  // 마지막 저장된 데이터 추적
-  const lastSavedDataRef = useRef<string>('');
 
-  // 데이터 변경 감지
-  useEffect(() => {
-    if (!currentRoomCode || isTemporaryMode || isLoadingData) {
-      setHasUnsavedChanges(false);
-      return;
+  // 방 데이터 저장 (내부용)
+  const saveToServer = useCallback(async (
+    newParticipants: Participant[],
+    newCandidates: CandidateLocation[],
+    newTitle?: string
+  ): Promise<boolean> => {
+    if (!currentRoomCode || isTemporaryMode) {
+      return true; // 임시 모드에서는 성공으로 처리
     }
 
-    const currentData = JSON.stringify({ participants, candidates, meetingTitle });
-    
-    if (lastSavedDataRef.current && currentData !== lastSavedDataRef.current) {
-      setHasUnsavedChanges(true);
-      setSaveStatus('unsaved');
+    setSaveStatus('saving');
+
+    try {
+      const response = await fetch('/api/rooms', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomCode: currentRoomCode,
+          meetingTitle: newTitle || meetingTitle,
+          participants: newParticipants,
+          candidates: newCandidates,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+        return true;
+      } else {
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+        return false;
+      }
+    } catch (error) {
+      console.error('저장 실패:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      return false;
     }
-  }, [participants, candidates, meetingTitle, currentRoomCode, isTemporaryMode, isLoadingData]);
+  }, [currentRoomCode, isTemporaryMode, meetingTitle]);
+
+  // 참여자 추가 (즉시 저장)
+  const addParticipant = useCallback(async (participant: Participant): Promise<boolean> => {
+    const newParticipants = [...participants, participant];
+    setParticipants(newParticipants);
+    return saveToServer(newParticipants, candidates);
+  }, [participants, candidates, setParticipants, saveToServer]);
+
+  // 참여자 삭제 (즉시 저장)
+  const removeParticipant = useCallback(async (participantId: string): Promise<boolean> => {
+    const newParticipants = participants.filter(p => p.id !== participantId);
+    setParticipants(newParticipants);
+    return saveToServer(newParticipants, candidates);
+  }, [participants, candidates, setParticipants, saveToServer]);
+
+  // 참여자 수정 (즉시 저장)
+  const updateParticipant = useCallback(async (participantId: string, updates: Partial<Participant>): Promise<boolean> => {
+    const newParticipants = participants.map(p => 
+      p.id === participantId ? { ...p, ...updates } : p
+    );
+    setParticipants(newParticipants);
+    return saveToServer(newParticipants, candidates);
+  }, [participants, candidates, setParticipants, saveToServer]);
+
+  // 후보지 추가 (즉시 저장)
+  const addCandidate = useCallback(async (candidate: CandidateLocation): Promise<boolean> => {
+    const newCandidates = [...candidates, candidate];
+    setCandidates(newCandidates);
+    return saveToServer(participants, newCandidates);
+  }, [participants, candidates, setCandidates, saveToServer]);
+
+  // 후보지 삭제 (즉시 저장)
+  const removeCandidate = useCallback(async (candidateId: string): Promise<boolean> => {
+    const newCandidates = candidates.filter(c => c.id !== candidateId);
+    setCandidates(newCandidates);
+    return saveToServer(participants, newCandidates);
+  }, [participants, candidates, setCandidates, saveToServer]);
+
+  // 모든 후보지 삭제 (즉시 저장)
+  const clearCandidates = useCallback(async (): Promise<boolean> => {
+    setCandidates([]);
+    return saveToServer(participants, []);
+  }, [participants, setCandidates, saveToServer]);
 
   // 방 데이터 로드
   const loadRoomData = useCallback(async (roomCode: string) => {
@@ -63,14 +130,6 @@ export function useRoomData({
         }
         setParticipants(data.data.participants || []);
         setCandidates(data.data.candidates || []);
-        
-        // 로드된 데이터를 마지막 저장 데이터로 설정
-        lastSavedDataRef.current = JSON.stringify({
-          participants: data.data.participants || [],
-          candidates: data.data.candidates || [],
-          meetingTitle: data.data.meetingTitle || '새로운 모임'
-        });
-        setHasUnsavedChanges(false);
         setSaveStatus('idle');
         
         console.log('✅ 참여자:', data.data.participants?.length || 0);
@@ -84,52 +143,6 @@ export function useRoomData({
       setTimeout(() => setIsLoadingData(false), 500);
     }
   }, [setMeetingTitle, setParticipants, setCandidates]);
-
-  // 명시적 저장
-  const saveRoom = useCallback(async (): Promise<boolean> => {
-    if (!currentRoomCode || isTemporaryMode) {
-      return false;
-    }
-
-    setSaveStatus('saving');
-
-    try {
-      const titleToSave = meetingTitle === '새로운 모임' ? undefined : meetingTitle;
-      
-      const response = await fetch('/api/rooms', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomCode: currentRoomCode,
-          meetingTitle: titleToSave,
-          participants,
-          candidates,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        lastSavedDataRef.current = JSON.stringify({ participants, candidates, meetingTitle });
-        setHasUnsavedChanges(false);
-        setSaveStatus('saved');
-        
-        // 3초 후 상태 초기화
-        setTimeout(() => {
-          setSaveStatus('idle');
-        }, 3000);
-        
-        return true;
-      } else {
-        setSaveStatus('error');
-        return false;
-      }
-    } catch (error) {
-      console.error('저장 실패:', error);
-      setSaveStatus('error');
-      return false;
-    }
-  }, [currentRoomCode, isTemporaryMode, meetingTitle, participants, candidates]);
 
   // 방 새로고침
   const refreshRoom = useCallback(async () => {
@@ -152,18 +165,6 @@ export function useRoomData({
       });
 
       const data = await response.json();
-      
-      if (data.success) {
-        // 새 방의 초기 데이터를 저장된 상태로 설정
-        lastSavedDataRef.current = JSON.stringify({
-          participants: [],
-          candidates: [],
-          meetingTitle: roomTitle
-        });
-        setHasUnsavedChanges(false);
-        setSaveStatus('idle');
-      }
-      
       return { success: data.success, error: data.error };
     } catch (error) {
       console.error('방 생성 오류:', error);
@@ -190,16 +191,7 @@ export function useRoomData({
           setMeetingTitle(data.data.meetingTitle);
           setParticipants(data.data.participants || []);
           setCandidates(data.data.candidates || []);
-          
-          // 로드된 데이터를 마지막 저장 데이터로 설정
-          lastSavedDataRef.current = JSON.stringify({
-            participants: data.data.participants || [],
-            candidates: data.data.candidates || [],
-            meetingTitle: data.data.meetingTitle || '새로운 모임'
-          });
-          setHasUnsavedChanges(false);
           setSaveStatus('idle');
-          
           return { success: true, data: data.data };
         }
         return { success: false };
@@ -215,12 +207,22 @@ export function useRoomData({
 
   return {
     isLoadingData,
+    saveStatus,
+    
+    // 방 관리
     loadRoomData,
     refreshRoom,
     createRoom,
     enterRoom,
-    saveRoom,
-    saveStatus,
-    hasUnsavedChanges,
+    
+    // 참여자 즉시 저장 액션
+    addParticipant,
+    removeParticipant,
+    updateParticipant,
+    
+    // 후보지 즉시 저장 액션
+    addCandidate,
+    removeCandidate,
+    clearCandidates,
   };
 }
