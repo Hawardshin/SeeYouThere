@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Trash2, Users, Bus, MapPin, RefreshCw } from 'lucide-react';
+import { Trash2, Users, Bus, MapPin } from 'lucide-react';
 import AddressSearch from './AddressSearch';
 import SubwayStationPicker from './SubwayStationPicker';
 import { subwayStations } from '@/data/subwayStations';
@@ -16,7 +16,6 @@ interface ParticipantManagerProps {
   onParticipantsChange: (participants: Participant[]) => void;
   candidatesCount?: number;
   onClearCandidates?: () => void;
-  onRefresh?: () => void;
 }
 
 export default function ParticipantManager({ 
@@ -24,42 +23,15 @@ export default function ParticipantManager({
   onParticipantsChange,
   candidatesCount = 0,
   onClearCandidates,
-  onRefresh,
 }: ParticipantManagerProps) {
   const [name, setName] = useState('');
   const [startLocation, setStartLocation] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
   const [transportMode, setTransportMode] = useState<'car' | 'transit'>('transit');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshTime, setLastRefreshTime] = useState(0);
   const { alertState, showAlert, closeAlert } = useAlertModal();
   
   // 출발지 선택 방법 탭
   const [startLocationTab, setStartLocationTab] = useState<'search' | 'subway'>('search');
-
-  // 새로고침 처리 (5초 제한)
-  const handleRefresh = async () => {
-    if (!onRefresh) return;
-    
-    const now = Date.now();
-    const timeSinceLastRefresh = now - lastRefreshTime;
-    
-    if (timeSinceLastRefresh < 5000) {
-      const remainingSeconds = Math.ceil((5000 - timeSinceLastRefresh) / 1000);
-      showAlert(`${remainingSeconds}초 후에 다시 시도해주세요.`, { variant: 'warning' });
-      return;
-    }
-    
-    setIsRefreshing(true);
-    setLastRefreshTime(now);
-    
-    try {
-      await onRefresh();
-      setTimeout(() => setIsRefreshing(false), 800);
-    } catch {
-      setIsRefreshing(false);
-    }
-  };
 
   const handleAddParticipant = () => {
     if (!name.trim() || !startLocation.trim()) {
@@ -169,21 +141,6 @@ export default function ParticipantManager({
             </div>
             <span>참여자 등록</span>
           </div>
-          {onRefresh && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="hover:bg-muted relative"
-              title="참여자 목록 새로고침 (5초마다 가능)"
-            >
-              <RefreshCw className={`h-4 w-4 transition-transform ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
-              {isRefreshing && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping" />
-              )}
-            </Button>
-          )}
         </CardTitle>
         <CardDescription className="text-base">
           출발 위치를 등록하면 최적의 만남 장소를 찾아드려요

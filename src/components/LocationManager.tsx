@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { MapPin, Plus, Clock, Trash2, Loader2, Star, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { MapPin, Plus, Clock, Trash2, Loader2, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getTravelTime } from '@/lib/mapApi';
 import AddressSearch from './AddressSearch';
 import SubwayStationPicker from './SubwayStationPicker';
@@ -23,7 +23,6 @@ interface LocationManagerProps {
   onLocationSelect: (id: string | null) => void;
   departureTime: string;
   onDepartureTimeChange: (time: string) => void;
-  onRefresh?: () => void;
 }
 
 export default function LocationManager({
@@ -34,13 +33,10 @@ export default function LocationManager({
   onLocationSelect,
   departureTime,
   onDepartureTimeChange,
-  onRefresh,
 }: LocationManagerProps) {
   const [locationAddress, setLocationAddress] = useState('');
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | undefined>();
   const [isCalculating, setIsCalculating] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshTime, setLastRefreshTime] = useState(0);
   const { alertState, showAlert, closeAlert } = useAlertModal();
   
   // 목표지 선택 방법 탭
@@ -48,30 +44,6 @@ export default function LocationManager({
   const [previewPopularLocation, setPreviewPopularLocation] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'time' | 'maxTime' | 'totalTime'>('maxTime');
   const popularScrollRef = useRef<HTMLDivElement>(null);
-
-  // 새로고침 처리 (5초 제한)
-  const handleRefresh = async () => {
-    if (!onRefresh) return;
-    
-    const now = Date.now();
-    const timeSinceLastRefresh = now - lastRefreshTime;
-    
-    if (timeSinceLastRefresh < 5000) {
-      const remainingSeconds = Math.ceil((5000 - timeSinceLastRefresh) / 1000);
-      showAlert(`${remainingSeconds}초 후에 다시 시도해주세요.`, { variant: 'warning' });
-      return;
-    }
-    
-    setIsRefreshing(true);
-    setLastRefreshTime(now);
-    
-    try {
-      await onRefresh();
-      setTimeout(() => setIsRefreshing(false), 800);
-    } catch {
-      setIsRefreshing(false);
-    }
-  };
 
   // 후보지 추가 로직
   const addCandidateLocation = async (name: string, address: string, coords: { lat: number; lng: number }) => {
@@ -196,21 +168,6 @@ export default function LocationManager({
               <MapPin className="w-5 h-5" />
               장소 선택
             </div>
-            {onRefresh && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="hover:bg-muted relative"
-                title="장소 목록 새로고침 (5초마다 가능)"
-              >
-                <RefreshCw className={`h-4 w-4 transition-transform ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
-                {isRefreshing && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping" />
-                )}
-              </Button>
-            )}
           </CardTitle>
           <CardDescription>
             만날 장소를 추가하고 각 참여자의 이동 시간을 계산합니다
