@@ -94,6 +94,29 @@ export interface Database {
           created_at?: string
         }
       }
+      meetings: {
+        Row: {
+          id: string
+          title: string
+          participants: Json
+          candidates: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          participants: Json
+          candidates: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          participants?: Json
+          candidates?: Json
+          created_at?: string
+        }
+      }
     }
   }
 }
