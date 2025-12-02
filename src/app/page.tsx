@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import ParticipantManager from '@/components/ParticipantManager';
@@ -50,8 +50,28 @@ function SaveStatusIndicator({ status }: { status: SaveStatus }) {
   return null;
 }
 
+// 로딩 폴백 컴포넌트
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+        <p className="text-muted-foreground">로딩 중...</p>
+      </div>
+    </div>
+  );
+}
 
+// 메인 페이지를 Suspense로 감싸는 wrapper
 export default function Home() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   // Custom Hooks
   const roomState = useRoomState();
   const participantsState = useParticipants();
