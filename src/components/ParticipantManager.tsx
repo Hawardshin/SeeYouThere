@@ -31,7 +31,7 @@ export default function ParticipantManager({
   const { alertState, showAlert, closeAlert } = useAlertModal();
   
   // 출발지 선택 방법 탭
-  const [startLocationTab, setStartLocationTab] = useState<'search' | 'subway'>('search');
+  const [startLocationTab, setStartLocationTab] = useState<'search' | 'subway'>('subway');
 
   const handleAddParticipant = () => {
     if (!name.trim() || !startLocation.trim()) {
@@ -169,21 +169,7 @@ export default function ParticipantManager({
             
             {/* 탭 버튼 */}
             <div className="flex gap-2 mb-3">
-              <button
-                onClick={() => {
-                  setStartLocationTab('search');
-                  setStartLocation('');
-                  setCoordinates(undefined);
-                }}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
-                  startLocationTab === 'search'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted hover:bg-muted/80 text-foreground'
-                }`}
-              >
-                <MapPin className="h-4 w-4 inline mr-2" />
-                직접 검색
-              </button>
+             
               <button
                 onClick={() => {
                   setStartLocationTab('subway');
@@ -197,6 +183,21 @@ export default function ParticipantManager({
                 }`}
               >
                 🚇 지하철역
+              </button>
+               <button
+                onClick={() => {
+                  setStartLocationTab('search');
+                  setStartLocation('');
+                  setCoordinates(undefined);
+                }}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
+                  startLocationTab === 'search'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted hover:bg-muted/80 text-foreground'
+                }`}
+              >
+                <MapPin className="h-4 w-4 inline mr-2" />
+                직접 검색
               </button>
             </div>
 
