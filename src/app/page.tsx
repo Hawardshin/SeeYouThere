@@ -179,7 +179,14 @@ export default function Home() {
       {/* 방 목록 다이얼로그 */}
       <RoomListDialog
         open={roomState.showRoomDialog}
-        onOpenChange={roomState.setShowRoomDialog}
+        onOpenChange={(open) => {
+          // 다이얼로그가 닫힐 때, 방도 없고 임시모드도 아니면 임시모드로 진입
+          if (!open && !roomState.currentRoomCode && !roomState.isTemporaryMode) {
+            roomState.enterTemporaryMode();
+          } else {
+            roomState.setShowRoomDialog(open);
+          }
+        }}
         onRoomEnter={handleRoomEnterWithConfirm}
         onRoomCreate={handleRoomCreate}
         currentRoomCode={roomState.currentRoomCode}
