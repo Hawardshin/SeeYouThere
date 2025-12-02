@@ -382,6 +382,7 @@ export default function Home() {
                   >
                     <ResultsDisplay
                       candidates={candidatesState.candidates}
+                      participants={participantsState.participants}
                       selectedLocationId={candidatesState.selectedLocationId}
                     />
                   </motion.div>

@@ -1,17 +1,18 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CandidateLocation, LocationStats } from '@/types';
+import { CandidateLocation, LocationStats, Participant } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, TrendingUp, BarChart3, Award, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { Trophy, TrendingUp, BarChart3, Award, ChevronDown, ChevronUp, MapPin, Clock } from 'lucide-react';
 
 interface ResultsDisplayProps {
   candidates: CandidateLocation[];
+  participants: Participant[];
   selectedLocationId: string | null;
 }
 
-export default function ResultsDisplay({ candidates, selectedLocationId }: ResultsDisplayProps) {
+export default function ResultsDisplay({ candidates, participants, selectedLocationId }: ResultsDisplayProps) {
   // 각 장소의 펼침/접힌 상태 관리
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
 
@@ -326,11 +327,13 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
                       {sortedTravelTimes.map((travelTime, index) => {
                         const isFirst = index === 0;
                         const isLast = index === sortedTravelTimes.length - 1;
+                        const participant = participants.find(p => p.id === travelTime.participantId);
+                        const participantIndex = participants.findIndex(p => p.id === travelTime.participantId);
                         
                         return (
                           <div
                             key={travelTime.participantId}
-                            className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                               isFirst 
                                 ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/30' 
                                 : isLast 
@@ -338,41 +341,78 @@ export default function ResultsDisplay({ candidates, selectedLocationId }: Resul
                                 : 'border-border bg-muted/30'
                             }`}
                           >
-                            <div className="flex items-center gap-3 flex-1">
-                              <Badge 
-                                variant={isFirst ? 'default' : isLast ? 'destructive' : 'secondary'}
-                                className="shrink-0 w-8 text-center"
-                              >
-                                {index + 1}
-                              </Badge>
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium text-foreground">
+                            {/* 순위 */}
+                            <Badge 
+                              variant={isFirst ? 'default' : isLast ? 'destructive' : 'secondary'}
+                              className="shrink-0 w-8 h-8 flex items-center justify-center text-sm font-bold"
+                            >
+                              {index + 1}
+                            </Badge>
+
+                            {/* 프로필 아바타 */}
+                            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ${
+                              ['bg-gradient-to-br from-violet-500 to-purple-600',
+                               'bg-gradient-to-br from-blue-500 to-cyan-600',
+                               'bg-gradient-to-br from-emerald-500 to-teal-600',
+                               'bg-gradient-to-br from-orange-500 to-amber-600',
+                               'bg-gradient-to-br from-pink-500 to-rose-600',
+                               'bg-gradient-to-br from-indigo-500 to-blue-600'][participantIndex % 6]
+                            }`}>
+                              {travelTime.participantName.charAt(0).toUpperCase()}
+                            </div>
+
+                            {/* 참여자 정보 */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="font-semibold text-foreground">
                                   {travelTime.participantName}
                                 </span>
+                                {participant && (
+                                  <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${
+                                    participant.transportMode === 'car' 
+                                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400' 
+                                      : 'bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400'
+                                  }`}>
+                                    {participant.transportMode === 'car' ? '🚗 자동차' : '🚇 대중교통'}
+                                  </span>
+                                )}
                                 {isFirst && (
-                                  <Badge variant="outline" className="text-xs bg-green-600 text-white border-green-600">
+                                  <Badge variant="outline" className="text-[10px] bg-green-600 text-white border-green-600">
                                     최단
                                   </Badge>
                                 )}
                                 {isLast && (
-                                  <Badge variant="outline" className="text-xs bg-red-600 text-white border-red-600">
+                                  <Badge variant="outline" className="text-[10px] bg-red-600 text-white border-red-600">
                                     최장
                                   </Badge>
                                 )}
                               </div>
+                              {participant && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                                  <span className="truncate">{participant.startLocation}</span>
+                                </div>
+                              )}
                             </div>
 
-                            <div className="text-right shrink-0 ml-3">
-                              <div className={`text-lg font-bold ${
-                                isFirst ? 'text-green-600 dark:text-green-400' : 
-                                isLast ? 'text-red-600 dark:text-red-400' : 
-                                'text-foreground'
+                            {/* 소요 시간 */}
+                            <div className="text-right shrink-0">
+                              <div className={`flex items-center gap-1 text-lg font-bold ${
+                                travelTime.isEstimated
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : isFirst ? 'text-green-600 dark:text-green-400' : 
+                                    isLast ? 'text-red-600 dark:text-red-400' : 
+                                    'text-foreground'
                               }`}>
-                                {travelTime.duration}분
+                                <Clock className="w-4 h-4" />
+                                {travelTime.isEstimated ? '~' : ''}{travelTime.duration}분
+                                {travelTime.isEstimated && (
+                                  <span className="text-xs" title="추정치">⚠️</span>
+                                )}
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {((travelTime.distance || 0) / 1000).toFixed(1)}km
+                                {travelTime.isEstimated && <span className="ml-1 text-amber-500">(추정)</span>}
                               </div>
                             </div>
                           </div>
