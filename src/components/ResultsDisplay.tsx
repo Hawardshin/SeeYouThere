@@ -327,12 +327,23 @@ export default function ResultsDisplay({ candidates, participants, selectedLocat
                       {sortedTravelTimes.map((travelTime, index) => {
                         const isFirst = index === 0;
                         const isLast = index === sortedTravelTimes.length - 1;
-                        const participant = participants.find(p => p.id === travelTime.participantId);
-                        const participantIndex = participants.findIndex(p => p.id === travelTime.participantId);
+                        const participant = participants.find(p => p.id === travelTime.participantId || p.name === travelTime.participantName);
+                        
+                        // ID 또는 이름 기반으로 일관된 색상 계산
+                        const colorSeed = travelTime.participantId || travelTime.participantName;
+                        const colorIndex = colorSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 6;
+                        const gradientColors = [
+                          'bg-gradient-to-br from-violet-500 to-purple-600',
+                          'bg-gradient-to-br from-blue-500 to-cyan-600',
+                          'bg-gradient-to-br from-emerald-500 to-teal-600',
+                          'bg-gradient-to-br from-orange-500 to-amber-600',
+                          'bg-gradient-to-br from-pink-500 to-rose-600',
+                          'bg-gradient-to-br from-indigo-500 to-blue-600'
+                        ];
                         
                         return (
                           <div
-                            key={travelTime.participantId}
+                            key={travelTime.participantId || travelTime.participantName}
                             className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                               isFirst 
                                 ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/30' 
@@ -350,14 +361,7 @@ export default function ResultsDisplay({ candidates, participants, selectedLocat
                             </Badge>
 
                             {/* 프로필 아바타 */}
-                            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ${
-                              ['bg-gradient-to-br from-violet-500 to-purple-600',
-                               'bg-gradient-to-br from-blue-500 to-cyan-600',
-                               'bg-gradient-to-br from-emerald-500 to-teal-600',
-                               'bg-gradient-to-br from-orange-500 to-amber-600',
-                               'bg-gradient-to-br from-pink-500 to-rose-600',
-                               'bg-gradient-to-br from-indigo-500 to-blue-600'][participantIndex % 6]
-                            }`}>
+                            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ${gradientColors[colorIndex]}`}>
                               {travelTime.participantName.charAt(0).toUpperCase()}
                             </div>
 

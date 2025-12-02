@@ -320,21 +320,29 @@ export default function ParticipantManager({
                 <p className="text-xs text-muted-foreground/70 mt-1">위에서 첫 참여자를 추가해보세요!</p>
               </div>
             ) : (
-              participants.map((participant, index) => (
+              participants.map((participant) => {
+                // 참여자 ID 또는 이름 기반으로 일관된 색상 인덱스 계산
+                const colorIndex = participant.id 
+                  ? participant.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 6
+                  : participant.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 6;
+                
+                const gradientColors = [
+                  'bg-gradient-to-br from-violet-500 to-purple-600',
+                  'bg-gradient-to-br from-blue-500 to-cyan-600',
+                  'bg-gradient-to-br from-emerald-500 to-teal-600',
+                  'bg-gradient-to-br from-orange-500 to-amber-600',
+                  'bg-gradient-to-br from-pink-500 to-rose-600',
+                  'bg-gradient-to-br from-indigo-500 to-blue-600'
+                ];
+                
+                return (
                 <div
                   key={participant.id}
                   className="group relative p-4 bg-gradient-to-br from-card to-muted/30 rounded-xl border hover:border-primary/50 transition-all hover:shadow-md"
                 >
                   <div className="flex items-center gap-4">
                     {/* 프로필 아바타 */}
-                    <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-md ${
-                      ['bg-gradient-to-br from-violet-500 to-purple-600',
-                       'bg-gradient-to-br from-blue-500 to-cyan-600',
-                       'bg-gradient-to-br from-emerald-500 to-teal-600',
-                       'bg-gradient-to-br from-orange-500 to-amber-600',
-                       'bg-gradient-to-br from-pink-500 to-rose-600',
-                       'bg-gradient-to-br from-indigo-500 to-blue-600'][index % 6]
-                    }`}>
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-md ${gradientColors[colorIndex]}`}>
                       {participant.name.charAt(0).toUpperCase()}
                     </div>
                     
@@ -373,7 +381,8 @@ export default function ParticipantManager({
                     </Button>
                   </div>
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </div>
